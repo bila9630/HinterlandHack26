@@ -1,4 +1,5 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type Todo = {
   id: number;
@@ -8,15 +9,24 @@ type Todo = {
 
 type Filter = "all" | "active" | "completed";
 
-const initialTodos: Todo[] = [
-  { id: 1, title: "Plan the day", completed: true },
-  { id: 2, title: "Finish the project", completed: false },
-];
-
 export default function App() {
-  const [todos, setTodos] = useState(initialTodos);
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("todos")
+      .select("id, title, completed")
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) setError(error.message);
+        else setTodos(data);
+        setLoading(false);
+      });
+  }, []);
 
   const filteredTodos = useMemo(() => {
     if (filter === "active") return todos.filter((todo) => !todo.completed);
@@ -26,29 +36,62 @@ export default function App() {
 
   const remainingCount = todos.filter((todo) => !todo.completed).length;
 
-  function addTodo(event: FormEvent<HTMLFormElement>) {
+  async function addTodo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const title = newTodo.trim();
 
     if (!title) return;
 
-    setTodos((current) => [
-      ...current,
-      { id: Date.now(), title, completed: false },
-    ]);
     setNewTodo("");
+    const { data, error } = await supabase
+      .from("todos")
+      .insert({ title })
+      .select("id, title, completed")
+      .single();
+
+    if (error) {
+      setError(error.message);
+      setNewTodo(title);
+      return;
+    }
+    setError(null);
+    setTodos((current) => [...current, data]);
   }
 
-  function toggleTodo(id: number) {
+  async function toggleTodo(id: number) {
+    const todo = todos.find((item) => item.id === id);
+    if (!todo) return;
+
+    const completed = !todo.completed;
     setTodos((current) =>
-      current.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo,
-      ),
+      current.map((item) => (item.id === id ? { ...item, completed } : item)),
     );
+
+    const { error } = await supabase
+      .from("todos")
+      .update({ completed })
+      .eq("id", id);
+
+    if (error) {
+      setError(error.message);
+      setTodos((current) =>
+        current.map((item) =>
+          item.id === id ? { ...item, completed: !completed } : item,
+        ),
+      );
+    }
   }
 
-  function deleteTodo(id: number) {
+  async function deleteTodo(id: number) {
+    const previous = todos;
     setTodos((current) => current.filter((todo) => todo.id !== id));
+
+    const { error } = await supabase.from("todos").delete().eq("id", id);
+
+    if (error) {
+      setError(error.message);
+      setTodos(previous);
+    }
   }
 
   return (
@@ -112,6 +155,12 @@ export default function App() {
             </div>
           </div>
 
+          {error && (
+            <p className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+
           <ul className="divide-y divide-slate-100">
             {filteredTodos.map((todo) => (
               <li
@@ -148,7 +197,13 @@ export default function App() {
             ))}
           </ul>
 
-          {filteredTodos.length === 0 && (
+          {loading && (
+            <p className="px-5 py-12 text-center text-sm text-slate-400">
+              Loading tasks…
+            </p>
+          )}
+
+          {!loading && filteredTodos.length === 0 && (
             <div className="px-5 py-12 text-center">
               <p className="font-medium text-slate-700">No tasks here</p>
               <p className="mt-1 text-sm text-slate-400">
