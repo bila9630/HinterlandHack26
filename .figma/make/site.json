@@ -1,0 +1,10 @@
+{
+  "description": "This web application displays a simple 'Hello World' message at the center of the screen, serving as an introductory tool for new developers learning web design.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
