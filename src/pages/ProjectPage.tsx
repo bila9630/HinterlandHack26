@@ -5,11 +5,13 @@ import GoodsList from "@/components/project/GoodsList";
 import LayoutFloor, { FloorMode } from "@/components/project/LayoutFloor";
 import LayoutGallery, { LayoutChoice } from "@/components/project/LayoutGallery";
 import OfferPage from "@/components/project/OfferPage";
+import PeoplePage from "@/components/project/PeoplePage";
 import ProcessPage from "@/components/project/process/ProcessPage";
 import ReviewPage from "@/components/project/ReviewPage";
 import { LAYOUTS } from "@/components/project/layouts";
 import { Goods, layoutGoods } from "@/components/project/goods";
 import { PlacedWorkstation } from "@/components/project/workstations";
+import { DEFAULT_STAFFING, Staffing } from "@/components/project/people";
 import { ProcessStep } from "@/components/project/process/model";
 import { STEPS, useStep } from "@/hooks/useStep";
 
@@ -23,6 +25,7 @@ export default function ProjectPage() {
   // One process per kind of goods (keyed by goods id, or "all" before any goods exist).
   const [processes, setProcesses] = useState<Record<string, ProcessStep[]>>({});
   const [processGoodsId, setProcessGoodsId] = useState<string | null>(null);
+  const [staffing, setStaffing] = useState<Staffing>(DEFAULT_STAFFING);
   // The Offer step goes summary for approval → offer for the customer.
   const [showOffer, setShowOffer] = useState(false);
   const slots = useMemo(() => layoutGoods(goods), [goods]);
@@ -72,6 +75,18 @@ export default function ProjectPage() {
         steps={processes[processKey] ?? []}
         onStepsChange={(next) => setProcesses((current) => ({ ...current, [processKey]: next }))}
         onContinue={() => setStep(3)}
+      />
+    );
+  }
+
+  if (step === 3 && chosen) {
+    return (
+      <PeoplePage
+        layout={chosen}
+        workstations={workstations}
+        staffing={staffing}
+        onStaffingChange={setStaffing}
+        onContinue={() => setStep(4)}
       />
     );
   }
