@@ -1,16 +1,9 @@
 import { useId } from "react";
-import { FacilityLayout, ZoneKind } from "./layouts";
+import { FacilityLayout, TILE, ZONE_COLORS, layoutSize, layoutTiles } from "./layouts";
 
 const COS30 = Math.cos(Math.PI / 6);
 const SLAB = 3;
-
-export const ZONE_COLORS: Record<ZoneKind | "lane", { fill: string; dot: string }> = {
-  inbound: { fill: "#b4c6fa", dot: "#7b9cf5" },
-  warehouse: { fill: "#addfc8", dot: "#4fbf8a" },
-  lane: { fill: "#eceff5", dot: "#c4cad6" },
-  production: { fill: "#dcedae", dot: "#b2d95a" },
-  outbound: { fill: "#f9cc9e", dot: "#f2a35a" },
-};
+const LANE_FILL = "#eceff5";
 
 // Isometric projection of a plan point; the slab's far corner sits at the origin.
 function project(x: number, z: number, y = 0) {
@@ -24,7 +17,7 @@ function rect(x: number, z: number, length: number, depth: number) {
 export default function LayoutPreview({ layout }: { layout: FacilityLayout }) {
   // useId output contains characters that break url(#…) references.
   const arrowId = `arrow-${useId().replace(/[^\w-]/g, "")}`;
-  const { length, depth } = layout;
+  const { length, depth } = layoutSize(layout);
   const minX = -depth * COS30;
   const maxX = length * COS30;
   const height = (length + depth) / 2 + SLAB;
@@ -49,14 +42,19 @@ export default function LayoutPreview({ layout }: { layout: FacilityLayout }) {
         points={[project(0, depth), project(length, depth), project(length, depth, SLAB), project(0, depth, SLAB)].join(" ")}
         fill="#cdd5e6"
       />
-      <polygon points={rect(0, 0, length, depth)} fill={ZONE_COLORS.lane.fill} />
-      {layout.zones.map((zone, index) => (
-        <polygon
-          key={index}
-          points={rect(zone.x, zone.z, zone.length, zone.depth)}
-          fill={ZONE_COLORS[zone.kind].fill}
-        />
-      ))}
+      <polygon points={rect(0, 0, length, depth)} fill={LANE_FILL} />
+      {layoutTiles(layout)
+        .filter((tile) => tile.kind !== "lane")
+        .map((tile) => (
+          // The matching stroke hides hairline seams between neighbouring squares.
+          <polygon
+            key={`${tile.x}-${tile.z}`}
+            points={rect(tile.x * TILE, tile.z * TILE, TILE, TILE)}
+            fill={ZONE_COLORS[tile.kind].fill}
+            stroke={ZONE_COLORS[tile.kind].fill}
+            strokeWidth="0.4"
+          />
+        ))}
       <polyline
         points={layout.flow.map(([x, z]) => project(x, z)).join(" ")}
         fill="none"

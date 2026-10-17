@@ -1,49 +1,67 @@
-export type ZoneKind = "inbound" | "warehouse" | "production" | "outbound";
+export type ZoneKind = "inbound" | "warehouse" | "production" | "outbound" | "lane";
 
-// Plan coordinates in metres: x runs along the facility length, z along its depth.
-export type Zone = { kind: ZoneKind; x: number; z: number; length: number; depth: number };
+// Edge length of one floor square, in metres.
+export const TILE = 10;
 
 export type FacilityLayout = {
   id: string;
   name: string;
   description: string;
   bestFor: string;
-  length: number;
-  depth: number;
-  zones: Zone[];
-  // Main goods flow, as [x, z] points in plan coordinates.
+  // One string per row of squares (along z), one character per square (along x).
+  // I = inbound, W = warehouse, P = production, O = outbound, L = forklift lane.
+  grid: string[];
+  // Main goods flow, as [x, z] points in metres.
   flow: [number, number][];
 };
 
-export const ZONE_LABELS: Record<ZoneKind | "lane", string> = {
+export const ZONE_ORDER: ZoneKind[] = ["inbound", "warehouse", "production", "outbound", "lane"];
+
+export const ZONE_LABELS: Record<ZoneKind, string> = {
   inbound: "Inbound",
   warehouse: "Warehouse",
-  lane: "Forklift lane",
   production: "Production",
   outbound: "Outbound",
+  lane: "Forklift lane",
 };
 
-// Gaps between zones are forklift lanes; the floor slab shows through there.
+export const ZONE_COLORS: Record<ZoneKind, { fill: string; edge: string }> = {
+  inbound: { fill: "#a9bffa", edge: "#5d82ec" },
+  warehouse: { fill: "#a0dbc1", edge: "#3f9f74" },
+  production: { fill: "#d9eb9f", edge: "#8cae35" },
+  outbound: { fill: "#f8c995", edge: "#d98b3a" },
+  lane: { fill: "#d6dae3", edge: "#9aa2b4" },
+};
+
+const KIND_BY_CHAR: Record<string, ZoneKind> = {
+  I: "inbound",
+  W: "warehouse",
+  P: "production",
+  O: "outbound",
+  L: "lane",
+};
+
 export const LAYOUTS: FacilityLayout[] = [
   {
     id: "warehouse-production",
     name: "Warehouse + production",
     description: "Storage and a production line, one dock side",
     bestFor: "Contract logistics with assembly",
-    length: 80,
-    depth: 60,
-    zones: [
-      { kind: "outbound", x: 0, z: 0, length: 12, depth: 26 },
-      { kind: "inbound", x: 0, z: 32, length: 12, depth: 28 },
-      { kind: "warehouse", x: 15, z: 0, length: 65, depth: 28 },
-      { kind: "production", x: 15, z: 31, length: 65, depth: 29 },
+    grid: [
+      "OOLPPPPP",
+      "OOLPPPPP",
+      "OOLPPPPP",
+      "LLLLLLLL",
+      "IILWWWWW",
+      "IILWWWWW",
+      "IILWWWWW",
     ],
     flow: [
-      [6, 46],
-      [13.5, 40],
-      [55, 29.5],
-      [55, 14],
-      [6, 13],
+      [10, 55],
+      [35, 55],
+      [50, 35],
+      [50, 15],
+      [10, 15],
     ],
   },
   {
@@ -51,17 +69,10 @@ export const LAYOUTS: FacilityLayout[] = [
     name: "Through-flow",
     description: "Goods move straight from inbound to outbound",
     bestFor: "High volume, one direction",
-    length: 80,
-    depth: 60,
-    zones: [
-      { kind: "inbound", x: 0, z: 0, length: 10, depth: 60 },
-      { kind: "warehouse", x: 12, z: 0, length: 32, depth: 60 },
-      { kind: "production", x: 46, z: 0, length: 22, depth: 60 },
-      { kind: "outbound", x: 70, z: 0, length: 10, depth: 60 },
-    ],
+    grid: Array(6).fill("ILWWWLPPLO"),
     flow: [
       [5, 30],
-      [76, 30],
+      [96, 30],
     ],
   },
   {
@@ -69,20 +80,46 @@ export const LAYOUTS: FacilityLayout[] = [
     name: "L-shaped",
     description: "Inbound and outbound on neighbouring sides",
     bestFor: "Corner sites",
-    length: 80,
-    depth: 60,
-    zones: [
-      { kind: "inbound", x: 15, z: 0, length: 65, depth: 10 },
-      { kind: "warehouse", x: 0, z: 0, length: 12, depth: 37 },
-      { kind: "warehouse", x: 15, z: 13, length: 65, depth: 19 },
-      { kind: "production", x: 15, z: 35, length: 65, depth: 25 },
-      { kind: "outbound", x: 0, z: 40, length: 12, depth: 20 },
+    grid: [
+      "WWLIIIII",
+      "WWLLLLLL",
+      "WWLWWWWW",
+      "WWLWWWWW",
+      "LLLLLLLL",
+      "OOLPPPPP",
+      "OOLPPPPP",
     ],
     flow: [
       [60, 5],
-      [45, 11.5],
-      [13.5, 25],
-      [6, 50],
+      [45, 15],
+      [25, 25],
+      [10, 60],
     ],
   },
 ];
+
+export function layoutSize(layout: FacilityLayout) {
+  return { length: layout.grid[0].length * TILE, depth: layout.grid.length * TILE };
+}
+
+// Every square of the grid, by column (x) and row (z).
+export function layoutTiles(layout: FacilityLayout) {
+  return layout.grid.flatMap((row, z) => [...row].map((char, x) => ({ kind: KIND_BY_CHAR[char], x, z })));
+}
+
+// Area and centre (in squares) of each zone kind present in the layout.
+export function layoutZones(layout: FacilityLayout) {
+  const tiles = layoutTiles(layout);
+  return ZONE_ORDER.map((kind) => {
+    const own = tiles.filter((tile) => tile.kind === kind);
+    const centre: [number, number] = [
+      own.reduce((sum, tile) => sum + tile.x + 0.5, 0) / own.length,
+      own.reduce((sum, tile) => sum + tile.z + 0.5, 0) / own.length,
+    ];
+    return { kind, area: own.length * TILE * TILE, centre };
+  }).filter((zone) => zone.area > 0);
+}
+
+export function formatArea(m2: number) {
+  return `${m2.toLocaleString("en-US")} m²`;
+}

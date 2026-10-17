@@ -1,13 +1,14 @@
 import { useRef } from "react";
 import { ArrowRight, Check, Upload } from "lucide-react";
-import { LAYOUTS, ZONE_LABELS } from "./layouts";
-import LayoutPreview, { ZONE_COLORS } from "./LayoutPreview";
+import { LAYOUTS, ZONE_COLORS, ZONE_LABELS, layoutSize } from "./layouts";
+import LayoutPreview from "./LayoutPreview";
 
 export type LayoutChoice = { kind: "example"; id: string } | { kind: "upload"; file: File };
 
 type Props = {
   choice: LayoutChoice;
   onChoose: (choice: LayoutChoice) => void;
+  onUse: () => void;
 };
 
 function SelectedBadge() {
@@ -57,8 +58,9 @@ function UploadCard({ file, onFile }: { file: File | null; onFile: (file: File) 
   );
 }
 
-export default function LayoutGallery({ choice, onChoose }: Props) {
+export default function LayoutGallery({ choice, onChoose, onUse }: Props) {
   const selectedLayout = choice.kind === "example" ? LAYOUTS.find((layout) => layout.id === choice.id) : undefined;
+  const selectedSize = selectedLayout && layoutSize(selectedLayout);
 
   return (
     <main className="flex min-h-[calc(100vh-3rem)] flex-col">
@@ -71,7 +73,7 @@ export default function LayoutGallery({ choice, onChoose }: Props) {
           <ul className="flex flex-wrap gap-x-3 gap-y-1">
             {(["inbound", "warehouse", "lane", "production", "outbound"] as const).map((kind) => (
               <li key={kind} className="flex items-center gap-1.5 text-[10px] text-slate-600">
-                <span className="size-2 rounded-[3px]" style={{ backgroundColor: ZONE_COLORS[kind].dot }} />
+                <span className="size-2 rounded-[3px]" style={{ backgroundColor: ZONE_COLORS[kind].edge }} />
                 {ZONE_LABELS[kind]}
               </li>
             ))}
@@ -115,10 +117,10 @@ export default function LayoutGallery({ choice, onChoose }: Props) {
       <footer className="sticky bottom-0 flex items-center justify-between gap-4 border-t border-slate-200 bg-white px-4 py-2.5 sm:px-6">
         <p className="min-w-0 truncate text-[11px] text-slate-500">
           Selected:{" "}
-          {selectedLayout ? (
+          {selectedLayout && selectedSize ? (
             <>
-              <span className="font-semibold text-slate-900">{selectedLayout.name}</span> · {selectedLayout.length} ×{" "}
-              {selectedLayout.depth} m
+              <span className="font-semibold text-slate-900">{selectedLayout.name}</span> · {selectedSize.length} ×{" "}
+              {selectedSize.depth} m
             </>
           ) : (
             choice.kind === "upload" && <span className="font-semibold text-slate-900">{choice.file.name}</span>
@@ -126,7 +128,10 @@ export default function LayoutGallery({ choice, onChoose }: Props) {
         </p>
         <button
           type="button"
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 focus:outline-none"
+          onClick={onUse}
+          // Uploaded plans can't be turned into a floor yet.
+          disabled={!selectedLayout}
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
         >
           Use this layout
           <ArrowRight className="size-3.5" aria-hidden="true" />

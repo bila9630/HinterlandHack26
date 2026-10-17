@@ -1,0 +1,113 @@
+import { createContext, useContext, useMemo } from "react";
+import { Color } from "three";
+import { RACK_BAY, RACK_LEVELS, WorkstationType } from "./workstations";
+
+// Ghost models are see-through and ignore the pointer, so the floor below keeps receiving it.
+const GhostContext = createContext(false);
+const noRaycast = () => null;
+
+type Vec3 = [number, number, number];
+
+// Flat-shaded box: lighter top, darker +x side, base colour on the +z side.
+function Block({ size, position, color }: { size: Vec3; position: Vec3; color: string }) {
+  const ghost = useContext(GhostContext);
+  const shades = useMemo(() => {
+    const base = new Color(color);
+    return {
+      top: base.clone().lerp(new Color("#ffffff"), 0.3).getStyle(),
+      left: base.getStyle(),
+      right: base.clone().lerp(new Color("#000000"), 0.18).getStyle(),
+    };
+  }, [color]);
+  const material = { transparent: ghost, opacity: ghost ? 0.8 : 1 };
+
+  return (
+    <mesh position={position} raycast={ghost ? noRaycast : undefined}>
+      <boxGeometry args={size} />
+      <meshBasicMaterial attach="material-0" color={shades.right} {...material} />
+      <meshBasicMaterial attach="material-1" color={shades.right} {...material} />
+      <meshBasicMaterial attach="material-2" color={shades.top} {...material} />
+      <meshBasicMaterial attach="material-3" color={shades.right} {...material} />
+      <meshBasicMaterial attach="material-4" color={shades.left} {...material} />
+      <meshBasicMaterial attach="material-5" color={shades.left} {...material} />
+    </mesh>
+  );
+}
+
+const CARTON = "#e39b3d";
+const FRAME = "#3a4252";
+
+function PalletRack({ length, depth }: { length: number; depth: number }) {
+  const bays = Math.floor(length / RACK_BAY);
+  const level = 1.6;
+  const upright = 0.3;
+  const bayLength = (length - upright * 2) / bays;
+
+  return (
+    <>
+      {[-1, 1].map((side) => (
+        <Block
+          key={side}
+          size={[upright, level * RACK_LEVELS, depth]}
+          position={[side * (length / 2 - upright / 2), (level * RACK_LEVELS) / 2, 0]}
+          color={FRAME}
+        />
+      ))}
+      {Array.from({ length: RACK_LEVELS }, (_, row) => (
+        <group key={row}>
+          <Block size={[length - upright * 2, 0.1, depth]} position={[0, row * level + 0.05, 0]} color="#64708a" />
+          {Array.from({ length: bays }, (_, bay) => (
+            <Block
+              key={bay}
+              size={[bayLength - 0.25, 1.15, depth - 0.3]}
+              position={[-length / 2 + upright + (bay + 0.5) * bayLength, row * level + 0.1 + 0.575, 0]}
+              color={CARTON}
+            />
+          ))}
+        </group>
+      ))}
+    </>
+  );
+}
+
+function AssemblyLine({ length, depth }: { length: number; depth: number }) {
+  const items = Math.floor(length / 4);
+  return (
+    <>
+      <Block size={[length, 0.9, depth * 0.6]} position={[0, 0.45, 0]} color="#8b95a8" />
+      {Array.from({ length: items }, (_, index) => (
+        <Block
+          key={index}
+          size={[0.9, 0.6, 0.8]}
+          position={[-length / 2 + (index + 0.5) * (length / items), 1.2, 0]}
+          color={CARTON}
+        />
+      ))}
+    </>
+  );
+}
+
+export default function WorkstationModel({ type, ghost = false }: { type: WorkstationType; ghost?: boolean }) {
+  const { length, depth } = type;
+
+  return (
+    <GhostContext.Provider value={ghost}>
+      {type.id === "dock-door" && <Block size={[length, 4.5, 0.4]} position={[0, 2.25, 0]} color="#d9822b" />}
+      {type.id === "pallet-rack" && <PalletRack length={length} depth={depth} />}
+      {type.id === "assembly-line" && <AssemblyLine length={length} depth={depth} />}
+      {type.id === "packing-table" && (
+        <>
+          <Block size={[length, 0.9, depth * 0.75]} position={[0, 0.45, 0]} color="#c49a63" />
+          <Block size={[0.8, 0.7, 0.8]} position={[-0.6, 1.25, 0]} color={CARTON} />
+        </>
+      )}
+      {type.id === "forklift" && (
+        <>
+          <Block size={[1.8, 1.3, depth * 0.6]} position={[0.5, 0.65, 0]} color="#f2b632" />
+          <Block size={[0.2, 3, depth * 0.55]} position={[-0.6, 1.5, 0]} color={FRAME} />
+          <Block size={[0.8, 0.1, depth * 0.45]} position={[-1.0, 0.1, 0]} color={FRAME} />
+        </>
+      )}
+    </GhostContext.Provider>
+  );
+}

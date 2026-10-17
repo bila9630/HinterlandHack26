@@ -2,21 +2,50 @@ import { useMemo, useState } from "react";
 import AddGoodsForm from "@/components/project/AddGoodsForm";
 import FloorScene from "@/components/project/FloorScene";
 import GoodsList from "@/components/project/GoodsList";
+import LayoutFloor, { FloorMode } from "@/components/project/LayoutFloor";
 import LayoutGallery, { LayoutChoice } from "@/components/project/LayoutGallery";
+import { LAYOUTS } from "@/components/project/layouts";
 import { Goods, layoutGoods } from "@/components/project/goods";
+import { PlacedWorkstation } from "@/components/project/workstations";
 import { STEPS, useStep } from "@/hooks/useStep";
 
 export default function ProjectPage() {
-  const [step] = useStep();
+  const [step, setStep] = useStep();
   const [goods, setGoods] = useState<Goods[]>([]);
   const [layout, setLayout] = useState<LayoutChoice>({ kind: "example", id: "warehouse-production" });
+  // The Workstations step goes gallery → layout on the floor → placing workstations.
+  const [floorMode, setFloorMode] = useState<FloorMode | null>(null);
+  const [workstations, setWorkstations] = useState<PlacedWorkstation[]>([]);
   const slots = useMemo(() => layoutGoods(goods), [goods]);
 
   function addGoods(input: Omit<Goods, "id">) {
     setGoods((current) => [...current, { ...input, id: crypto.randomUUID() }]);
   }
 
-  if (step === 1) return <LayoutGallery choice={layout} onChoose={setLayout} />;
+  function chooseLayout(choice: LayoutChoice) {
+    // Placed workstations only make sense on the layout they were placed on.
+    const sameLayout = choice.kind === "example" && layout.kind === "example" && choice.id === layout.id;
+    if (!sameLayout) setWorkstations([]);
+    setLayout(choice);
+  }
+
+  if (step === 1) {
+    const chosen = layout.kind === "example" ? LAYOUTS.find((item) => item.id === layout.id) : undefined;
+    if (floorMode && chosen) {
+      return (
+        <LayoutFloor
+          layout={chosen}
+          mode={floorMode}
+          workstations={workstations}
+          onWorkstationsChange={setWorkstations}
+          onChangeLayout={() => setFloorMode(null)}
+          onAddWorkstations={() => setFloorMode("workstations")}
+          onContinue={() => setStep(2)}
+        />
+      );
+    }
+    return <LayoutGallery choice={layout} onChoose={chooseLayout} onUse={() => setFloorMode("summary")} />;
+  }
 
   if (step > 1) {
     return (
