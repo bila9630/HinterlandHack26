@@ -104,6 +104,9 @@ export type Vehicle = {
 };
 export type Truck = { trailer: UV; cab: "blue" | "orange"; docked?: string; waiting?: boolean; brand?: boolean };
 
+// An improvement suggested from the simulation. `target` is the person or vehicle it is about.
+export type Suggestion = { id: string; title: string; body: string; impact: string; target?: string };
+
 export type FactoryLayout = {
   camera: {
     C: number;
@@ -128,6 +131,7 @@ export type FactoryLayout = {
   objects: SceneObject[];
   people: Person[];
   vehicles: Vehicle[];
+  suggestions: Suggestion[];
   exterior: {
     groundColor: string;
     groundExtent: number;
@@ -159,6 +163,9 @@ export type FactoryLayout = {
 };
 
 export const factoryLayout = data as unknown as FactoryLayout;
+
+// Everyone working on the floor: the people, plus whoever drives or walks each vehicle.
+export const onShift = ({ people, vehicles }: FactoryLayout) => people.length + vehicles.length;
 
 // "bob 1.7s" -> 1.7
 export function bobSeconds(anim?: string) {

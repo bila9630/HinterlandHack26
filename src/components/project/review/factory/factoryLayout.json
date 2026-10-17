@@ -57,6 +57,11 @@
     { "id": "PJ-1", "type": "palletJackWithWorker", "route": [[-0.4,5.15],[1.0,5.15],[1.0,5.15],[-0.4,5.15]], "loopSec": 7, "task": "Unloading", "sortAt": [0.3, 5.15],
       "profile": { "hall": "Hall 1", "driver": "Tomasz K.", "capacity": "2.0 t", "status": "Unloading", "job": "Truck T-07 at In 1 → staging", "avgMoveMin": 1.2, "utilisation": 0.64, "costPerHour": 24, "costNote": "driver + jack", "shift": { "driving": 0.52, "lifting": 0.08, "waiting": 0.2, "idle": 0.2 } } }
   ],
+  "suggestions": [
+    {"id": "assembly-operator", "title": "Add a 4th operator at Assembly", "body": "Station 3 runs at 97 % and holds a queue of 3 pallets — it limits the whole flow.", "impact": "≈ +18 % throughput", "target": "op-3"},
+    {"id": "combine-fl2", "title": "Combine FL-2 trips to Outbound", "body": "FL-2 waits 22 % of the shift. Picking up 2 pallets per trip saves about 40 trips a day.", "impact": "≈ −€ 46 / day", "target": "FL-2"},
+    {"id": "packer-loading", "title": "Let the packer help at Loading", "body": "Packing is used only 33 %. Sharing the role covers the Loading peak.", "impact": "No extra staff", "target": "packer"}
+  ],
   "exterior": {
     "groundColor": "#C6E3B8", "groundExtent": 40,
     "sitePaving": { "rect": [-5.2, -3.0, 8.4, 9.2], "color": "#E6EAF1" },
