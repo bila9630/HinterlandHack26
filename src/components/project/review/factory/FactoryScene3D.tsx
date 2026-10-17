@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { OrthographicCamera, Vector3 } from "three";
 import { ClockContext, SimClock } from "./clock";
-import { Conveyor, FactoryLayout, Vehicle } from "./layout";
+import { Conveyor, FactoryLayout, UV } from "./layout";
 import { SelectionContext } from "./selection";
 import { worldScale } from "./three/geometry";
 import { routePose } from "./three/motion";
@@ -25,7 +25,7 @@ type Props = {
   selectedId?: string | null;
   // Called with a person's or vehicle's id when it is clicked, and with null for the background.
   onSelect?: (id: string | null) => void;
-  // A vehicle the camera keeps centred on as it drives.
+  // A person or vehicle the camera keeps centred on.
   followId?: string | null;
   // A clock to read and control from outside (the scene still ticks it every frame);
   // otherwise the scene runs its own, set by `paused` and `speed`.
@@ -42,15 +42,16 @@ function Ticker({ clock }: { clock: SimClock }) {
 
 type Controls = { target: Vector3; minZoom: number; maxZoom: number; update: () => void };
 
-// Glides the camera along with a vehicle, keeping the angle and zoom the user chose.
-function Follow({ vehicle }: { vehicle: Vehicle }) {
+// Glides the camera to whatever `where` returns each frame (a vehicle on its route, or a
+// person standing still), keeping the angle and zoom the user chose.
+function Follow({ where }: { where: (time: number) => UV }) {
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls) as unknown as Controls | null;
   const sim = useContext(ClockContext)!;
   useFrame((_, delta) => {
     if (!controls) return;
-    const { at } = routePose(vehicle.route, vehicle.loopSec, sim.time, vehicle.dwellSec);
-    const step = new Vector3(at[0], 0, at[1]).sub(controls.target).multiplyScalar(1 - Math.exp(-Math.min(delta, 0.1) * 4));
+    const [u, v] = where(sim.time);
+    const step = new Vector3(u, 0, v).sub(controls.target).multiplyScalar(1 - Math.exp(-Math.min(delta, 0.1) * 4));
     controls.target.add(step);
     camera.position.add(step);
   });
@@ -123,7 +124,12 @@ export default function FactoryScene3D({
 
   const scale = useMemo(() => worldScale(layout.camera), [layout.camera]);
   const labels = useRef<HTMLDivElement>(null);
-  const followed = layout.vehicles.find((vehicle) => vehicle.id === followId);
+  const followed = useMemo(() => {
+    const vehicle = layout.vehicles.find((item) => item.id === followId);
+    if (vehicle) return (time: number) => routePose(vehicle.route, vehicle.loopSec, time, vehicle.dwellSec).at;
+    const person = layout.people.find((item) => item.id === followId);
+    return person ? () => person.at : null;
+  }, [layout, followId]);
   const conveyors = layout.objects.filter((object): object is Conveyor => object.type === "conveyor");
 
   return (
@@ -142,7 +148,7 @@ export default function FactoryScene3D({
               <LabelsContext.Provider value={labels}>
                 <Ticker clock={sim} />
                 <Framing layout={layout} scale={scale} />
-                {followed && <Follow vehicle={followed} />}
+                {followed && <Follow where={followed} />}
                 <StaticScene layout={layout} />
                 <Trees layout={layout} />
                 {conveyors.map((conveyor, index) => (
