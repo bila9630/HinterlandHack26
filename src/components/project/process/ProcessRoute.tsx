@@ -1,8 +1,9 @@
 import { RefObject, useMemo } from "react";
 import { Html, Line } from "@react-three/drei";
-import { TILE } from "./layouts";
-import { Labels } from "./LayoutScene";
-import { PalletPosition, Station, stationInfo } from "./process";
+import { TILE } from "../layouts";
+import { Labels } from "../LayoutScene";
+import { Station, stationName } from "./model";
+import { PalletPosition } from "./simulation";
 
 type Props = {
   labels: Labels;
@@ -145,7 +146,7 @@ export default function ProcessRoute({
           >
             <button
               type="button"
-              title={stationInfo(station.kind).name}
+              title={stationName(station.kind)}
               disabled={!clickable}
               onClick={() => (indexes ? onSelectStep?.(indexes[indexes.length - 1]) : onSelectStation?.(station))}
               className={`flex items-center justify-center rounded-full font-bold transition ${

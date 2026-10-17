@@ -1,4 +1,4 @@
-import { StationKind } from "./process";
+import { StationKind } from "./process/model";
 
 // Small isometric drawings of each kind of stop, on a 10 × 10 floor plate.
 type Shades = [top: string, left: string, right: string];

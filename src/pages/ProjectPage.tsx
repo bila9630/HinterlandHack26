@@ -5,12 +5,12 @@ import GoodsList from "@/components/project/GoodsList";
 import LayoutFloor, { FloorMode } from "@/components/project/LayoutFloor";
 import LayoutGallery, { LayoutChoice } from "@/components/project/LayoutGallery";
 import OfferPage from "@/components/project/OfferPage";
-import ProcessPage from "@/components/project/ProcessPage";
+import ProcessPage from "@/components/project/process/ProcessPage";
 import ReviewPage from "@/components/project/ReviewPage";
 import { LAYOUTS } from "@/components/project/layouts";
 import { Goods, layoutGoods } from "@/components/project/goods";
 import { PlacedWorkstation } from "@/components/project/workstations";
-import { ProcessStep } from "@/components/project/process";
+import { ProcessStep } from "@/components/project/process/model";
 import { STEPS, useStep } from "@/hooks/useStep";
 
 export default function ProjectPage() {
