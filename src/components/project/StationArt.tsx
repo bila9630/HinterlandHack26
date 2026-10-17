@@ -1,14 +1,10 @@
 import { StationKind } from "./process/model";
+import { BEAM, BELT, BELT_TOP, BLUE, BOX, DESK, ORANGE, PALLET, WRAP } from "./review/factory/colors";
+import { Triple } from "./review/factory/iso";
 
-// Small isometric drawings of each kind of stop, on a 10 × 10 floor plate.
-type Shades = [top: string, left: string, right: string];
-
-const ORANGE: Shades = ["#f6bd6c", "#e8a04f", "#cf8432"];
-const DARK: Shades = ["#4a5568", "#2d3748", "#1a202c"];
-const GREY: Shades = ["#eef2f7", "#d5dce7", "#b4bfd0"];
-const BLUE: Shades = ["#5a7af0", "#2c4fd6", "#1f3bb0"];
-const AMBER: Shades = ["#f0a54a", "#d9822b", "#b8671a"];
-const GREEN: Shades = ["#b5d96a", "#8cb83a", "#6c962a"];
+// Small isometric drawings of each kind of stop, on a 10 × 10 floor plate, in the
+// factory scene's colours: [top, left, right].
+const MARKING: Triple = ["#F2B53A", "#F2B53A", "#F2B53A"];
 
 const COS = Math.cos(Math.PI / 6);
 
@@ -16,7 +12,7 @@ function point(x: number, y: number, z: number) {
   return `${((x - z) * COS).toFixed(2)},${((x + z) / 2 - y).toFixed(2)}`;
 }
 
-function Box({ x, z, w, d, h, y = 0, shades }: { x: number; z: number; w: number; d: number; h: number; y?: number; shades: Shades }) {
+function Box({ x, z, w, d, h, y = 0, shades }: { x: number; z: number; w: number; d: number; h: number; y?: number; shades: Triple }) {
   const [top, left, right] = shades;
   const t = y + h;
   return (
@@ -28,43 +24,56 @@ function Box({ x, z, w, d, h, y = 0, shades }: { x: number; z: number; w: number
   );
 }
 
+// A rack's uprights along one side.
+const Uprights = ({ z }: { z: number }) => (
+  <>
+    {[1.5, 5, 8.5].map((x) => (
+      <Box key={x} x={x} z={z} w={0.4} d={0.4} h={7.6} shades={BLUE} />
+    ))}
+  </>
+);
+
 function Scene({ kind }: { kind: StationKind }) {
   switch (kind) {
     case "inbound-dock":
     case "outbound-dock":
       return (
         <>
-          <Box x={1.5} z={1.5} w={0.9} d={5} h={6.5} shades={kind === "inbound-dock" ? BLUE : AMBER} />
-          <Box x={4} z={4.2} w={3} d={3} h={2.8} shades={ORANGE} />
+          <Box x={1.5} z={1.5} w={0.9} d={5} h={6.5} shades={kind === "inbound-dock" ? BLUE : ORANGE} />
+          <Box x={4} z={4.2} w={3} d={3} h={0.4} shades={PALLET} />
+          <Box x={4.2} z={4.4} w={2.6} d={2.6} h={2.4} y={0.4} shades={BOX} />
         </>
       );
     case "pallet-rack":
       return (
         <>
-          <Box x={2.2} z={2.4} w={0.6} d={0.6} h={7} shades={DARK} />
-          <Box x={5.4} z={2.4} w={0.6} d={0.6} h={7} shades={DARK} />
-          {[0, 2.3, 4.6].map((y) => (
-            <Box key={y} x={2.8} z={3.2} w={2.6} d={3.6} h={1.9} y={y} shades={ORANGE} />
+          <Uprights z={3.2} />
+          {[0, 2.6, 5.2].map((y) => (
+            <g key={y}>
+              <Box x={1.5} z={3.2} w={7.4} d={3.2} h={0.35} y={y} shades={BEAM} />
+              <Box x={2.1} z={3.5} w={2.6} d={2.6} h={1.9} y={y + 0.35} shades={BOX} />
+              <Box x={5.6} z={3.5} w={2.6} d={2.6} h={1.9} y={y + 0.35} shades={y === 5.2 ? WRAP : BOX} />
+            </g>
           ))}
-          <Box x={2.2} z={7} w={0.6} d={0.6} h={7} shades={DARK} />
-          <Box x={5.4} z={7} w={0.6} d={0.6} h={7} shades={DARK} />
+          <Uprights z={6} />
         </>
       );
     case "assembly-line":
       return (
         <>
-          <Box x={1.5} z={1.8} w={2} d={2} h={2.2} shades={GREY} />
-          <Box x={1.5} z={4.6} w={7} d={1.8} h={1.2} shades={GREEN} />
-          <Box x={4.4} z={1.8} w={2} d={2} h={1.6} shades={GREY} />
-          <Box x={2} z={4.9} w={1.3} d={1.3} h={1.1} y={1.2} shades={ORANGE} />
-          <Box x={4.8} z={7.2} w={2} d={1.6} h={1.8} shades={GREY} />
+          <Box x={1} z={2.4} w={8} d={2.4} h={2} shades={BELT} />
+          <Box x={1} z={2.4} w={8} d={2.4} h={0.25} y={2} shades={BELT_TOP} />
+          {[1.8, 4.3, 6.8].map((x) => (
+            <Box key={x} x={x} z={2.9} w={1.4} d={1.4} h={1.3} y={2.25} shades={BOX} />
+          ))}
+          <Box x={1} z={7.8} w={8} d={0.2} h={0.05} shades={MARKING} />
         </>
       );
     case "packing-table":
       return (
         <>
-          <Box x={3} z={3} w={4} d={4} h={2.4} shades={GREY} />
-          <Box x={4.1} z={4.1} w={1.8} d={1.8} h={1.7} y={2.4} shades={ORANGE} />
+          <Box x={2.5} z={3.2} w={5} d={3.6} h={2.2} shades={DESK} />
+          <Box x={3.5} z={3.8} w={2} d={1.8} h={1.6} y={2.2} shades={BOX} />
         </>
       );
   }
