@@ -118,17 +118,7 @@ export default function ProcessFloor({
 
       <div className="relative z-10 order-1 m-4 lg:absolute lg:top-4 lg:left-4 lg:m-0 lg:w-[264px]">
         <section className="flex max-h-[calc(100vh-5rem)] flex-col rounded-2xl bg-white p-4 shadow-lg shadow-slate-900/5">
-          <div className="flex items-start justify-between gap-2">
-            <h1 className="text-[15px] font-bold tracking-tight">Process</h1>
-            <button
-              type="button"
-              onClick={onShowFlow}
-              className="flex cursor-pointer items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-700"
-            >
-              <Workflow className="size-3" aria-hidden="true" />
-              Flow view
-            </button>
-          </div>
+          <h1 className="text-[15px] font-bold tracking-tight">Process</h1>
           <p className="mt-0.5 text-[10px] text-slate-500">{subtitle}</p>
 
           {steps.length === 0 && !draft && (
@@ -221,6 +211,21 @@ export default function ProcessFloor({
             className="mt-2 w-full cursor-pointer rounded-lg bg-blue-600 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
             Continue to people →
+          </button>
+
+          <div className="my-3 flex items-center gap-2 text-[9px] font-semibold tracking-wide text-slate-400 uppercase">
+            <span className="h-px flex-1 bg-slate-200" />
+            or
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <button
+            type="button"
+            onClick={onShowFlow}
+            className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50 focus:ring-4 focus:ring-blue-100 focus:outline-none"
+          >
+            <Workflow className="size-3.5 text-blue-600" aria-hidden="true" />
+            Flow view
           </button>
         </section>
       </div>
