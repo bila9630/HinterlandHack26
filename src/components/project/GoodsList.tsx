@@ -62,7 +62,7 @@ export default function GoodsList({ goods, onRemove }: Props) {
             <span>Qty</span>
             <span className="w-8 text-right">Weight</span>
           </div>
-          <ul className="mt-2 max-h-[45vh] space-y-1.5 overflow-y-auto">
+          <ul className="mt-0.5 max-h-[45vh] space-y-1.5 overflow-x-hidden overflow-y-auto pt-1.5 pr-1.5">
             {goods.map((item, index) => (
               <li key={item.id} className="group relative flex items-center gap-2.5 rounded-xl bg-[#f1f5fb] px-2 py-2">
                 <PackageIcon />

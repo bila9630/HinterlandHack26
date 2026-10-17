@@ -77,7 +77,7 @@ export default function ProjectPage() {
       <div className="relative z-10 order-1 m-4 lg:absolute lg:top-4 lg:left-4 lg:m-0 lg:w-[264px]">
         <AddGoodsForm onAdd={addGoods} />
       </div>
-      <div className="relative z-10 order-3 m-4 lg:absolute lg:top-4 lg:right-4 lg:m-0 lg:w-[264px]">
+      <div className="relative z-10 order-3 m-4 lg:absolute lg:top-4 lg:right-4 lg:m-0 lg:w-[320px]">
         <GoodsList
           goods={goods}
           onRemove={(id) => setGoods((current) => current.filter((item) => item.id !== id))}

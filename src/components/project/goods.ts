@@ -19,6 +19,18 @@ export type Goods = {
   stackable: boolean;
 };
 
+// Stand-in for goods read from uploaded customer documents.
+export const MOCK_DOCUMENT_GOODS: Omit<Goods, "id">[] = [
+  { name: "Wiring harnesses", quantity: 120, length: 120, width: 80, height: 110, weight: 180, temperature: "ambient", stackable: true },
+  { name: "Brake discs", quantity: 40, length: 120, width: 100, height: 60, weight: 650, temperature: "ambient", stackable: true },
+  { name: "Seat modules", quantity: 60, length: 120, width: 80, height: 160, weight: 220, temperature: "ambient", stackable: false },
+  { name: "Structural adhesives", quantity: 48, length: 80, width: 60, height: 140, weight: 300, temperature: "chilled", stackable: false },
+  { name: "Exhaust systems", quantity: 25, length: 220, width: 90, height: 70, weight: 140, temperature: "ambient", stackable: true },
+  { name: "Fasteners & clips", quantity: 400, length: 40, width: 30, height: 25, weight: 6, temperature: "ambient", stackable: true },
+  { name: "Windshields", quantity: 18, length: 180, width: 40, height: 200, weight: 260, temperature: "ambient", stackable: false },
+  { name: "ECU control units", quantity: 32, length: 60, width: 40, height: 80, weight: 45, temperature: "ambient", stackable: true },
+];
+
 // Floor edge length in metres; the floor is split into FLOOR_TILES × FLOOR_TILES tiles.
 export const FLOOR_SIZE = 6;
 export const FLOOR_TILES = 4;

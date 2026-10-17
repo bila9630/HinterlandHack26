@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
-import { Goods, TEMPERATURES, Temperature } from "./goods";
+import { Goods, MOCK_DOCUMENT_GOODS, TEMPERATURES, Temperature } from "./goods";
+import UploadDocumentsDialog, { fileKey, formatSize } from "./UploadDocumentsDialog";
 
 type Props = {
   onAdd: (goods: Omit<Goods, "id">) => void;
@@ -53,6 +54,20 @@ export default function AddGoodsForm({ onAdd }: Props) {
   const [temperature, setTemperature] = useState<Temperature>("ambient");
   const [stackable, setStackable] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const [extracted, setExtracted] = useState<number | null>(null);
+
+  // Simulated extraction: whatever is uploaded, the same mock goods come out.
+  function addDocuments(files: File[]) {
+    setDocuments((current) => {
+      const known = new Set(current.map(fileKey));
+      return [...current, ...files.filter((file) => !known.has(fileKey(file)))];
+    });
+    MOCK_DOCUMENT_GOODS.forEach((item) => onAdd(item));
+    setExtracted(MOCK_DOCUMENT_GOODS.length);
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -105,7 +120,7 @@ export default function AddGoodsForm({ onAdd }: Props) {
         id="goods-name"
         value={name}
         onChange={(event) => setName(event.target.value)}
-        placeholder="e.g. Packaged electronics"
+        placeholder="e.g. Wiring harnesses"
         className={inputClass}
       />
 
@@ -159,6 +174,57 @@ export default function AddGoodsForm({ onAdd }: Props) {
         <span className="text-sm leading-none">+</span>
         Add to floor
       </button>
+
+      <div className="mt-4 border-t border-slate-100 pt-3">
+        <div className="mb-2 flex items-baseline justify-between">
+          <h3 className="text-[12px] font-semibold">Customer documents</h3>
+          <span className="text-[10px] text-slate-500">RFQ, drawings, lists</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setUploading(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-blue-300 bg-blue-50/40 py-2 text-[12px] font-semibold text-blue-600 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M8 11V3M4.5 6.5 8 3l3.5 3.5M3 13h10" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Upload documents
+        </button>
+        <p className="mt-1.5 text-[10px] leading-snug text-slate-500">
+          PDF, Excel, Word or images. Quantities and dimensions are read from them.
+        </p>
+
+        {documents.length > 0 && (
+          <ul className="mt-2 space-y-1">
+            {documents.map((file, index) => (
+              <li
+                key={fileKey(file)}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px]"
+              >
+                <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                <span className="shrink-0 text-[10px] text-slate-400">{formatSize(file.size)}</span>
+                <button
+                  type="button"
+                  onClick={() => setDocuments((current) => current.filter((_, i) => i !== index))}
+                  aria-label={`Remove ${file.name}`}
+                  className="shrink-0 text-slate-400 transition hover:text-red-600"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {extracted !== null && (
+          <p className="mt-2 rounded-lg bg-emerald-50 px-2.5 py-2 text-[11px] font-medium text-emerald-700">
+            ✓ {extracted} goods extracted and added to the floor.
+          </p>
+        )}
+      </div>
+
+      <UploadDocumentsDialog open={uploading} onClose={() => setUploading(false)} onUpload={addDocuments} />
     </form>
   );
 }
