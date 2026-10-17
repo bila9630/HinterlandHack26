@@ -4,6 +4,8 @@ import FloorScene from "@/components/project/FloorScene";
 import GoodsList from "@/components/project/GoodsList";
 import LayoutFloor, { FloorMode } from "@/components/project/LayoutFloor";
 import LayoutGallery, { LayoutChoice } from "@/components/project/LayoutGallery";
+import OfferPage from "@/components/project/OfferPage";
+import ReviewPage from "@/components/project/ReviewPage";
 import { LAYOUTS } from "@/components/project/layouts";
 import { Goods, layoutGoods } from "@/components/project/goods";
 import { PlacedWorkstation } from "@/components/project/workstations";
@@ -16,6 +18,8 @@ export default function ProjectPage() {
   // The Workstations step goes gallery → layout on the floor → placing workstations.
   const [floorMode, setFloorMode] = useState<FloorMode | null>(null);
   const [workstations, setWorkstations] = useState<PlacedWorkstation[]>([]);
+  // The Offer step goes summary for approval → offer for the customer.
+  const [showOffer, setShowOffer] = useState(false);
   const slots = useMemo(() => layoutGoods(goods), [goods]);
 
   function addGoods(input: Omit<Goods, "id">) {
@@ -45,6 +49,10 @@ export default function ProjectPage() {
       );
     }
     return <LayoutGallery choice={layout} onChoose={chooseLayout} onUse={() => setFloorMode("summary")} />;
+  }
+
+  if (step === 5) {
+    return showOffer ? <OfferPage /> : <ReviewPage onContinue={() => setShowOffer(true)} />;
   }
 
   if (step > 1) {
