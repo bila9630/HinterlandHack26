@@ -1,7 +1,5 @@
 import { StationKind, Subtask } from "./model";
 
-export const MTM_CODES = ["KA", "HA1", "HA2", "HA3", "BA2", "BA3", "AA1", "AA2", "AA3", "VA", "ZA"];
-
 export type Workflow = { id: string; kind: StationKind; name: string; subtasks: Omit<Subtask, "id">[] };
 
 const workflow = (kind: StationKind, name: string, subtasks: [string, string, number][]): Workflow => ({
@@ -108,3 +106,15 @@ export const WORKFLOWS: Workflow[] = [
 
 export const subtaskSeconds = (subtasks: { seconds: number }[]) =>
   subtasks.reduce((sum, subtask) => sum + subtask.seconds, 0);
+
+// Searchable MTM-UAS building blocks: every subtask used in a standard workflow, plus common extras.
+export const SUBSTEPS: Omit<Subtask, "id">[] = [
+  ...WORKFLOWS.flatMap((item) => item.subtasks),
+  { code: "HA1", label: "Pick small part", seconds: 1.6 },
+  { code: "HA3", label: "Pick heavy box with both hands", seconds: 4.8 },
+  { code: "AA1", label: "Place loosely", seconds: 1.2 },
+  { code: "BA2", label: "Bend and arise", seconds: 2.4 },
+  { code: "KA", label: "Walk 1 m", seconds: 0.9 },
+  { code: "VA", label: "Read display", seconds: 1.5 },
+  { code: "ZA", label: "Enter quantity on scanner", seconds: 3.0 },
+].filter((item, index, all) => all.findIndex((other) => other.code === item.code && other.label === item.label) === index);
