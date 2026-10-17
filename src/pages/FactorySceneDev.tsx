@@ -2,6 +2,7 @@ import { useState } from "react";
 import FactoryScene from "@/components/project/review/factory/FactoryScene";
 import FactoryScene3D from "@/components/project/review/factory/FactoryScene3D";
 import { factoryLayout } from "@/components/project/review/factory/layout";
+import VehicleCard from "@/components/project/review/factory/VehicleCard";
 
 // The mockup's scene, served from the handoff folder by the dev server.
 const REFERENCE = "/design/factory-scene-handoff/scene.svg";
@@ -15,7 +16,13 @@ export default function FactorySceneDev() {
   const [speed, setSpeed] = useState(1);
   const [compare, setCompare] = useState(false);
   const [view, setView] = useState<"3D" | "SVG">("3D");
-  const Scene = view === "3D" ? FactoryScene3D : FactoryScene;
+  const [following, setFollowing] = useState(false);
+  const vehicle = factoryLayout.vehicles.find((item) => item.id === selectedId);
+  const select = (id: string | null) => {
+    setSelectedId(id);
+    setFollowing(false);
+  };
+  const scene = { layout: factoryLayout, selectedId, onSelect: select, paused, speed };
   const selected =
     factoryLayout.people.find((person) => person.id === selectedId)?.name ??
     factoryLayout.vehicles.find((vehicle) => vehicle.id === selectedId)?.id;
@@ -23,14 +30,23 @@ export default function FactorySceneDev() {
   return (
     <div className="fixed inset-0 z-50 flex bg-[#C6E3B8]">
       <div className="relative min-w-0 flex-1">
-        <Scene
-          layout={factoryLayout}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          paused={paused}
-          speed={speed}
-        />
+        {view === "3D" ? (
+          <FactoryScene3D {...scene} followId={following ? selectedId : null} />
+        ) : (
+          <FactoryScene {...scene} />
+        )}
         {compare && <Tag>{view === "3D" ? "FactoryScene3D" : "FactoryScene (SVG)"}</Tag>}
+        {vehicle && (
+          <div className="absolute top-4 right-4">
+            <VehicleCard
+              vehicle={vehicle}
+              // Following moves the 3D camera; the SVG view has a fixed one.
+              following={following}
+              onFollow={() => setFollowing(view === "3D" && !following)}
+              onClose={() => select(null)}
+            />
+          </div>
+        )}
       </div>
       {compare && (
         <div className="relative min-w-0 flex-1 border-l-2 border-white">

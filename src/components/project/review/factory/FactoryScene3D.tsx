@@ -1,11 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { OrthographicCamera, Vector3 } from "three";
 import { ClockContext, SimClock } from "./clock";
-import { Conveyor, FactoryLayout } from "./layout";
+import { Conveyor, FactoryLayout, Vehicle } from "./layout";
 import { SelectionContext } from "./selection";
 import { worldScale } from "./three/geometry";
+import { routePose } from "./three/motion";
 import {
   ConveyorItems,
   LabelsContext,
@@ -24,6 +25,8 @@ type Props = {
   selectedId?: string | null;
   // Called with a person's or vehicle's id when it is clicked, and with null for the background.
   onSelect?: (id: string | null) => void;
+  // A vehicle the camera keeps centred on as it drives.
+  followId?: string | null;
   // A clock to read and control from outside (the scene still ticks it every frame);
   // otherwise the scene runs its own, set by `paused` and `speed`.
   clock?: SimClock;
@@ -37,11 +40,28 @@ function Ticker({ clock }: { clock: SimClock }) {
   return null;
 }
 
+type Controls = { target: Vector3; minZoom: number; maxZoom: number; update: () => void };
+
+// Glides the camera along with a vehicle, keeping the angle and zoom the user chose.
+function Follow({ vehicle }: { vehicle: Vehicle }) {
+  const camera = useThree((state) => state.camera);
+  const controls = useThree((state) => state.controls) as unknown as Controls | null;
+  const sim = useContext(ClockContext)!;
+  useFrame((_, delta) => {
+    if (!controls) return;
+    const { at } = routePose(vehicle.route, vehicle.loopSec, sim.time, vehicle.dwellSec);
+    const step = new Vector3(at[0], 0, at[1]).sub(controls.target).multiplyScalar(1 - Math.exp(-Math.min(delta, 0.1) * 4));
+    controls.target.add(step);
+    camera.position.add(step);
+  });
+  return null;
+}
+
 // Starts the camera where the mockup's view is: the same angle, centred on the viewBox's
 // centre and zoomed so the viewBox covers the canvas. Resizing keeps the user's own zoom.
 function Framing({ layout, scale }: { layout: FactoryLayout; scale: Scale }) {
   const camera = useThree((state) => state.camera) as OrthographicCamera;
-  const controls = useThree((state) => state.controls) as unknown as { target: Vector3; minZoom: number; maxZoom: number; update: () => void } | null;
+  const controls = useThree((state) => state.controls) as unknown as Controls | null;
   const width = useThree((state) => state.size.width);
   const height = useThree((state) => state.size.height);
   const { C, S, L, viewBox } = layout.camera;
@@ -79,7 +99,15 @@ function Framing({ layout, scale }: { layout: FactoryLayout; scale: Scale }) {
 
 // The hall in 3D, built from the same layout as the mockup: flat-coloured boxes that look
 // like the mockup from its camera angle, and can be turned, panned and zoomed.
-export default function FactoryScene3D({ layout, selectedId = null, onSelect, clock, paused = false, speed = 1 }: Props) {
+export default function FactoryScene3D({
+  layout,
+  selectedId = null,
+  onSelect,
+  followId = null,
+  clock,
+  paused = false,
+  speed = 1,
+}: Props) {
   const ownClock = useMemo(() => new SimClock(), []);
   const sim = clock ?? ownClock;
   useEffect(() => {
@@ -95,6 +123,7 @@ export default function FactoryScene3D({ layout, selectedId = null, onSelect, cl
 
   const scale = useMemo(() => worldScale(layout.camera), [layout.camera]);
   const labels = useRef<HTMLDivElement>(null);
+  const followed = layout.vehicles.find((vehicle) => vehicle.id === followId);
   const conveyors = layout.objects.filter((object): object is Conveyor => object.type === "conveyor");
 
   return (
@@ -113,6 +142,7 @@ export default function FactoryScene3D({ layout, selectedId = null, onSelect, cl
               <LabelsContext.Provider value={labels}>
                 <Ticker clock={sim} />
                 <Framing layout={layout} scale={scale} />
+                {followed && <Follow vehicle={followed} />}
                 <StaticScene layout={layout} />
                 <Trees layout={layout} />
                 {conveyors.map((conveyor, index) => (

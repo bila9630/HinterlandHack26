@@ -50,9 +50,12 @@
     { "id": "dock-1", "name": "Dock worker", "at": [0.4, 6.3], "vest": "#FFB020", "anim": "bob 2s" }
   ],
   "vehicles": [
-    { "id": "FL-1", "type": "forklift", "loaded": true, "route": [[1.3,5.3],[2.5,5.3],[5.4,5.3],[5.4,5.3],[2.5,5.3],[1.3,5.3]], "loopSec": 11, "task": "Put away", "sortAt": [5.3, 5.2], "showRoute": true },
-    { "id": "FL-2", "type": "forklift", "loaded": true, "route": [[4.5,3.25],[2.5,3.25],[2.5,1.3],[0.5,1.3],[0.5,1.3],[2.5,1.3],[2.5,3.25],[4.5,3.25]], "loopSec": 14, "task": "Loading", "sortAt": [2.5, 3.3], "showRoute": true },
-    { "id": "PJ-1", "type": "palletJackWithWorker", "route": [[-0.4,5.15],[1.0,5.15],[1.0,5.15],[-0.4,5.15]], "loopSec": 7, "task": "Unloading", "sortAt": [0.3, 5.15] }
+    { "id": "FL-1", "type": "forklift", "loaded": true, "route": [[1.3,5.3],[2.5,5.3],[5.4,5.3],[5.4,5.3],[2.5,5.3],[1.3,5.3]], "loopSec": 11, "task": "Put away", "sortAt": [5.3, 5.2], "showRoute": true,
+      "profile": { "hall": "Hall 1", "driver": "Mira S.", "capacity": "1.6 t", "status": "Putting away", "job": "P-0214 → rack R-03, level 2", "avgMoveMin": 3.1, "utilisation": 0.45, "costPerHour": 38, "costNote": "driver + vehicle", "shift": { "driving": 0.41, "lifting": 0.19, "waiting": 0.12, "idle": 0.28 } } },
+    { "id": "FL-2", "type": "forklift", "loaded": true, "route": [[4.5,3.25],[2.5,3.25],[2.5,1.3],[0.5,1.3],[0.5,1.3],[2.5,1.3],[2.5,3.25],[4.5,3.25]], "loopSec": 14, "task": "Loading", "sortAt": [2.5, 3.3], "showRoute": true,
+      "profile": { "hall": "Hall 1", "driver": "Jonas W.", "capacity": "1.6 t", "status": "Loading truck", "job": "P-0218 → truck T-09 at Out 1", "avgMoveMin": 2.4, "utilisation": 0.58, "costPerHour": 38, "costNote": "driver + vehicle", "shift": { "driving": 0.46, "lifting": 0.14, "waiting": 0.22, "idle": 0.18 } } },
+    { "id": "PJ-1", "type": "palletJackWithWorker", "route": [[-0.4,5.15],[1.0,5.15],[1.0,5.15],[-0.4,5.15]], "loopSec": 7, "task": "Unloading", "sortAt": [0.3, 5.15],
+      "profile": { "hall": "Hall 1", "driver": "Tomasz K.", "capacity": "2.0 t", "status": "Unloading", "job": "Truck T-07 at In 1 → staging", "avgMoveMin": 1.2, "utilisation": 0.64, "costPerHour": 24, "costNote": "driver + jack", "shift": { "driving": 0.52, "lifting": 0.08, "waiting": 0.2, "idle": 0.2 } } }
   ],
   "exterior": {
     "groundColor": "#C6E3B8", "groundExtent": 40,
