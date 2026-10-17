@@ -107,7 +107,8 @@ function palletRowBoxes(row: PalletRow) {
   return boxes;
 }
 
-function objectBoxes(object: SceneObject): BoxSpec[] {
+// One object of the hall as boxes, in floor cells.
+export function objectBoxes(object: SceneObject): BoxSpec[] {
   switch (object.type) {
     case "conveyor": {
       const belt = object.height - 2;

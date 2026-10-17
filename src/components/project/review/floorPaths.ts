@@ -21,8 +21,8 @@ const DOCK_PATH = 5;
 // Space kept between a worker and a workstation, wall or another worker.
 const CLEARANCE = 0.4;
 // Half the forklift's length with a pallet on its forks, and half its width.
-const FORKLIFT_REACH = 3.2;
-const FORKLIFT_HALF_WIDTH = 1.5;
+const FORKLIFT_REACH = workstationType("forklift").length / 2;
+const FORKLIFT_HALF_WIDTH = workstationType("forklift").depth / 2;
 // How close the forks must get to where a station's workers stand, in metres.
 const DROP_NEAR = 6;
 // The longest drive along the lane for a forklift that serves no station.
