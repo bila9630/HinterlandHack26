@@ -147,7 +147,7 @@ function truckBoxes({ trailer: [u, v], cab, brand }: Truck): BoxSpec[] {
 
 // A low cutaway wall in the plane u = fix or v = fix, outside the hall's edge. Open docks are
 // gaps with a coloured frame under the continuous top edge; closed docks are roller doors.
-function wallBoxes(axis: "u" | "v", fix: number, length: number, height: number, docks: Dock[], outward: number): BoxSpec[] {
+export function wallBoxes(axis: "u" | "v", fix: number, length: number, height: number, docks: Dock[], outward: number): BoxSpec[] {
   const thickness = WALL_THICKNESS;
   const across = outward > 0 ? fix : fix - thickness;
   const piece = (t0: number, t1: number, z: number, h: number, c: Triple, grow = 0): BoxSpec => ({

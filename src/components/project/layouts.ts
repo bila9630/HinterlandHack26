@@ -125,6 +125,8 @@ const DOCKS_PER_ZONE = 2;
 export const DOCK_DEPTH = 0.6;
 
 export type DockKind = "inbound" | "outbound";
+// An outer wall: at z = 0, z = max, x = 0 or x = max.
+export type WallSide = "z0" | "z1" | "x0" | "x1";
 
 // Every layout gets two dock doors per inbound and outbound zone, spread along the
 // outer wall that zone touches most. Positions are door centres in metres; a door
@@ -137,11 +139,11 @@ export function layoutDocks(layout: FacilityLayout) {
   return (["inbound", "outbound"] as DockKind[]).flatMap((kind) => {
     const own = tiles.filter((tile) => tile.kind === kind);
     const walls = [
-      { tiles: own.filter((tile) => tile.z === 0), along: "x", at: DOCK_DEPTH / 2 },
-      { tiles: own.filter((tile) => tile.z === rows - 1), along: "x", at: rows * TILE - DOCK_DEPTH / 2 },
-      { tiles: own.filter((tile) => tile.x === 0), along: "z", at: DOCK_DEPTH / 2 },
-      { tiles: own.filter((tile) => tile.x === columns - 1), along: "z", at: columns * TILE - DOCK_DEPTH / 2 },
-    ];
+      { side: "z0", tiles: own.filter((tile) => tile.z === 0), along: "x", at: DOCK_DEPTH / 2 },
+      { side: "z1", tiles: own.filter((tile) => tile.z === rows - 1), along: "x", at: rows * TILE - DOCK_DEPTH / 2 },
+      { side: "x0", tiles: own.filter((tile) => tile.x === 0), along: "z", at: DOCK_DEPTH / 2 },
+      { side: "x1", tiles: own.filter((tile) => tile.x === columns - 1), along: "z", at: columns * TILE - DOCK_DEPTH / 2 },
+    ] as const;
     const wall = walls.reduce((best, current) => (current.tiles.length > best.tiles.length ? current : best));
     if (wall.tiles.length === 0) return [];
 
@@ -156,7 +158,8 @@ export function layoutDocks(layout: FacilityLayout) {
     });
     const middle = (start + end) / 2;
     const label = wall.along === "x" ? { x: middle, z: wall.at } : { x: wall.at, z: middle };
-    return [{ kind, doors, label }];
+    // The wall the docks are on, and the stretch of it the zone covers, in metres.
+    return [{ kind, doors, label, side: wall.side as WallSide, span: [start, end] as [number, number] }];
   });
 }
 

@@ -12,6 +12,7 @@ import {
   layoutTiles,
   layoutZones,
 } from "./layouts";
+import SiteScenery from "./review/factory/three/SiteScenery";
 import WorkstationModel, { DockDoor } from "./WorkstationModel";
 import { PlacedWorkstation, Placement, WorkstationType, footprint, workstationType } from "./workstations";
 
@@ -162,6 +163,8 @@ type FloorProps = {
   overlay?: (labels: Labels) => ReactNode;
   // Hides the zone and dock labels, for small previews.
   quiet?: boolean;
+  // Draws the site around the hall: yards and trucks at the docks, roads, cars and trees.
+  scenery?: boolean;
 };
 
 function Floor({
@@ -174,12 +177,24 @@ function Floor({
   onSelectWorkstation,
   overlay,
   quiet = false,
+  scenery = false,
 }: FloorProps) {
   const columns = layout.grid[0].length;
   const rows = layout.grid.length;
   const tiles = useMemo(() => layoutTiles(layout), [layout]);
   const lanes = useMemo(() => laneLines(layout.grid), [layout]);
   const docks = useMemo(() => layoutDocks(layout), [layout]);
+  // The docks in floor squares, for the scenery outside them.
+  const siteDocks = useMemo(
+    () =>
+      docks.map((dock) => ({
+        kind: dock.kind,
+        side: dock.side,
+        span: [dock.span[0] / TILE, dock.span[1] / TILE] as [number, number],
+        doors: dock.doors.map((door) => (dock.side === "z0" || dock.side === "z1" ? door.x : door.z) / TILE),
+      })),
+    [docks],
+  );
   const draftType = draft?.type;
   const highlight = useMemo(() => (draftType ? zoneOutline(tiles, draftType.fits) : []), [tiles, draftType]);
   const gridLines = useMemo(() => {
@@ -197,6 +212,12 @@ function Floor({
 
   return (
     <group position={[-columns / 2, 0, -rows / 2]}>
+      {scenery && (
+        // The site's ground is level with the bottom of the floor slab.
+        <group position-y={-SLAB}>
+          <SiteScenery columns={columns} rows={rows} docks={siteDocks} />
+        </group>
+      )}
       <mesh position={[columns / 2, -SLAB / 2, rows / 2]}>
         <boxGeometry args={[columns, SLAB, rows]} />
         <meshBasicMaterial attach="material-0" color={SLAB_COLORS.right} />

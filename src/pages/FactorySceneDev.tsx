@@ -7,17 +7,9 @@ import PersonCard from "@/components/project/review/factory/PersonCard";
 import SuggestionsCard from "@/components/project/review/factory/SuggestionsCard";
 import VehicleCard from "@/components/project/review/factory/VehicleCard";
 
-// The mockup's scene, served from the handoff folder by the dev server.
-const REFERENCE = "/design/factory-scene-handoff/scene.svg";
-const SPEEDS = [0.5, 1, 2, 4];
-
-// Dev only: the factory scene full-screen, in 3D or as the SVG port, optionally next to the
-// mockup it was ported from.
+// Dev only: the factory scene full-screen, in 3D or as the SVG port.
 export default function FactorySceneDev() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [paused, setPaused] = useState(false);
-  const [speed, setSpeed] = useState(1);
-  const [compare, setCompare] = useState(false);
   const [view, setView] = useState<"3D" | "SVG">("3D");
   const [following, setFollowing] = useState(false);
   const vehicle = factoryLayout.vehicles.find((item) => item.id === selectedId);
@@ -26,7 +18,7 @@ export default function FactorySceneDev() {
     setSelectedId(id);
     setFollowing(false);
   };
-  const scene = { layout: factoryLayout, selectedId, onSelect: select, paused, speed };
+  const scene = { layout: factoryLayout, selectedId, onSelect: select };
   const card = {
     following,
     onFollow: () => setFollowing(view === "3D" && !following),
@@ -37,43 +29,34 @@ export default function FactorySceneDev() {
     factoryLayout.vehicles.find((vehicle) => vehicle.id === selectedId)?.id;
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-[#C6E3B8]">
-      <div className="relative min-w-0 flex-1">
-        {view === "3D" ? (
-          <FactoryScene3D {...scene} followId={following ? selectedId : null} />
-        ) : (
-          <FactoryScene {...scene} />
-        )}
-        {compare && <Tag>{view === "3D" ? "FactoryScene3D" : "FactoryScene (SVG)"}</Tag>}
-        <div className="absolute top-4 left-4">
-          <HeadcountCard layout={factoryLayout} />
-        </div>
-        <div className="absolute bottom-4 left-4">
-          <SuggestionsCard
-            suggestions={factoryLayout.suggestions}
-            // Until suggestions can be simulated, trying one shows who or what it is about.
-            onTry={({ target }) => {
-              if (!target) return;
-              setSelectedId(target);
-              setFollowing(view === "3D");
-            }}
-          />
-        </div>
-        {(vehicle || person) && (
-          <div className="absolute top-4 right-4">
-            {/* Following moves the 3D camera; the SVG view has a fixed one. */}
-            {vehicle ? (
-              <VehicleCard {...card} vehicle={vehicle} />
-            ) : (
-              person && <PersonCard {...card} person={person} />
-            )}
-          </div>
-        )}
+    <div className="fixed inset-0 z-50 bg-[#C6E3B8]">
+      {view === "3D" ? (
+        <FactoryScene3D {...scene} followId={following ? selectedId : null} />
+      ) : (
+        <FactoryScene {...scene} />
+      )}
+      <div className="absolute top-4 left-4">
+        <HeadcountCard layout={factoryLayout} />
       </div>
-      {compare && (
-        <div className="relative min-w-0 flex-1 border-l-2 border-white">
-          <img src={REFERENCE} alt="Reference mockup" className="block h-full w-full" />
-          <Tag>scene.svg (reference)</Tag>
+      <div className="absolute bottom-4 left-4">
+        <SuggestionsCard
+          suggestions={factoryLayout.suggestions}
+          // Until suggestions can be simulated, trying one shows who or what it is about.
+          onTry={({ target }) => {
+            if (!target) return;
+            setSelectedId(target);
+            setFollowing(view === "3D");
+          }}
+        />
+      </div>
+      {(vehicle || person) && (
+        <div className="absolute top-4 right-4">
+          {/* Following moves the 3D camera; the SVG view has a fixed one. */}
+          {vehicle ? (
+            <VehicleCard {...card} vehicle={vehicle} />
+          ) : (
+            person && <PersonCard {...card} person={person} />
+          )}
         </div>
       )}
       <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-xl bg-white/95 p-1.5 text-[12px] font-semibold text-slate-700 shadow-lg">
@@ -86,34 +69,8 @@ export default function FactorySceneDev() {
             {value}
           </button>
         ))}
-        <button className="rounded-lg px-2.5 py-1 hover:bg-slate-100" onClick={() => setPaused(!paused)}>
-          {paused ? "Play" : "Pause"}
-        </button>
-        {SPEEDS.map((value) => (
-          <button
-            key={value}
-            className={`rounded-lg px-2 py-1 ${speed === value ? "bg-blue-600 text-white" : "hover:bg-slate-100"}`}
-            onClick={() => setSpeed(value)}
-          >
-            {value}×
-          </button>
-        ))}
-        <button
-          className={`rounded-lg px-2.5 py-1 ${compare ? "bg-blue-600 text-white" : "hover:bg-slate-100"}`}
-          onClick={() => setCompare(!compare)}
-        >
-          Compare
-        </button>
         <span className="px-2 text-slate-500">{selected ? `Selected: ${selected}` : "Click a person or vehicle"}</span>
       </div>
     </div>
-  );
-}
-
-function Tag({ children }: { children: string }) {
-  return (
-    <span className="absolute top-3 left-1/2 -translate-x-1/2 rounded-lg bg-white/95 px-2 py-1 text-[11px] font-bold text-slate-700 shadow">
-      {children}
-    </span>
   );
 }

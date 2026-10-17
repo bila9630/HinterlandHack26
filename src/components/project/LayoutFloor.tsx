@@ -177,7 +177,8 @@ export default function LayoutFloor({
 
   return (
     <main className="relative flex flex-col bg-[#e0e7f3] lg:block lg:h-[calc(100vh-3rem)] lg:overflow-hidden">
-      <div className="relative order-2 h-[60vh] lg:absolute lg:inset-0 lg:left-[200px] lg:h-auto">
+      {/* The scene runs under the side panel too, so the site reaches the window's edge. */}
+      <div className="relative order-2 h-[60vh] lg:absolute lg:inset-0 lg:h-auto">
         <LayoutScene
           layout={layout}
           showLabels={!placing}
@@ -185,6 +186,7 @@ export default function LayoutFloor({
           draft={placing ? sceneDraft : null}
           onFloorPointer={placing ? handleFloorPointer : undefined}
           onSelectWorkstation={placing ? select : undefined}
+          scenery
         />
       </div>
       <div className="relative z-10 order-1 m-4 lg:absolute lg:top-4 lg:left-4 lg:m-0 lg:w-[264px]">

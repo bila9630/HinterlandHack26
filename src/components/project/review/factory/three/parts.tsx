@@ -69,23 +69,26 @@ export function StaticScene({ layout }: { layout: FactoryLayout }) {
   );
 }
 
-// Every tree on the site in four instanced meshes: trunks, crowns, highlights and shadows.
-export function Trees({ layout }: { layout: FactoryLayout }) {
-  const s = useContext(ScaleContext);
-  const trees = useMemo(() => {
-    const { treeBelts: belts, trees: near } = layout.exterior;
-    const random = pythonRandom(belts.seed);
-    const all: { at: UV; scale: number }[] = [];
-    for (let k = belts.from; k < belts.to; k++) {
-      for (const line of belts.lines) {
-        const along = k * belts.spacing + random.uniform(-belts.jitter, belts.jitter);
-        const across = (line.u ?? line.v!) + random.uniform(-belts.jitter, belts.jitter);
-        all.push({ at: line.u !== undefined ? [across, along] : [along, across], scale: random.uniform(belts.scale[0], belts.scale[1]) });
-      }
+// The factory scene's trees: belts beyond the roads, jittered like generate_scene.py with the
+// same seed, and the ones near the hall.
+export function factoryTrees(layout: FactoryLayout) {
+  const { treeBelts: belts, trees: near } = layout.exterior;
+  const random = pythonRandom(belts.seed);
+  const all: { at: UV; scale: number }[] = [];
+  for (let k = belts.from; k < belts.to; k++) {
+    for (const line of belts.lines) {
+      const along = k * belts.spacing + random.uniform(-belts.jitter, belts.jitter);
+      const across = (line.u ?? line.v!) + random.uniform(-belts.jitter, belts.jitter);
+      all.push({ at: line.u !== undefined ? [across, along] : [along, across], scale: random.uniform(belts.scale[0], belts.scale[1]) });
     }
-    near.at.forEach((at) => all.push({ at, scale: near.scale }));
-    return all;
-  }, [layout]);
+  }
+  near.at.forEach((at) => all.push({ at, scale: near.scale }));
+  return all;
+}
+
+// Trees in four instanced meshes: trunks, crowns, highlights and shadows.
+export function Trees({ trees }: { trees: { at: UV; scale: number }[] }) {
+  const s = useContext(ScaleContext);
   const refs = [useRef<InstancedMesh>(null), useRef<InstancedMesh>(null), useRef<InstancedMesh>(null), useRef<InstancedMesh>(null)];
 
   useLayoutEffect(() => {
@@ -93,6 +96,8 @@ export function Trees({ layout }: { layout: FactoryLayout }) {
     const dummy = new Object3D();
     const place = (mesh: InstancedMesh, index: number, x: number, y: number, z: number, sx: number, sy = sx, sz = sx) => {
       dummy.position.set(x, y, z);
+      // Shadows lie flat; turning each instance (not the whole mesh) keeps them in place.
+      dummy.rotation.set(mesh === shadows ? -Math.PI / 2 : 0, 0, 0);
       dummy.scale.set(sx, sy, sz);
       dummy.updateMatrix();
       mesh.setMatrixAt(index, dummy.matrix);
@@ -128,7 +133,7 @@ export function Trees({ layout }: { layout: FactoryLayout }) {
         <sphereGeometry args={[1, 12, 8]} />
         <meshBasicMaterial color="#86CFA3" />
       </instancedMesh>
-      <instancedMesh ref={refs[3]} args={[undefined, undefined, trees.length]} rotation-x={-Math.PI / 2} raycast={noRaycast}>
+      <instancedMesh ref={refs[3]} args={[undefined, undefined, trees.length]} raycast={noRaycast}>
         <circleGeometry args={[1, 20]} />
         <meshBasicMaterial color={SHADOW} transparent opacity={0.15} depthWrite={false} />
       </instancedMesh>

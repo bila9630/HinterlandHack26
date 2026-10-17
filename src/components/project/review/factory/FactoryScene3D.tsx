@@ -17,6 +17,7 @@ import {
   StationLabel,
   Trees,
   VehicleItem,
+  factoryTrees,
 } from "./three/parts";
 
 type Props = {
@@ -123,6 +124,7 @@ export default function FactoryScene3D({
   const select = useMemo(() => (id: string | null) => latestSelect.current?.(id), []);
 
   const scale = useMemo(() => worldScale(layout.camera), [layout.camera]);
+  const trees = useMemo(() => factoryTrees(layout), [layout]);
   const labels = useRef<HTMLDivElement>(null);
   const followed = useMemo(() => {
     const vehicle = layout.vehicles.find((item) => item.id === followId);
@@ -150,7 +152,7 @@ export default function FactoryScene3D({
                 <Framing layout={layout} scale={scale} />
                 {followed && <Follow where={followed} />}
                 <StaticScene layout={layout} />
-                <Trees layout={layout} />
+                <Trees trees={trees} />
                 {conveyors.map((conveyor, index) => (
                   <ConveyorItems key={index} conveyor={conveyor} />
                 ))}
