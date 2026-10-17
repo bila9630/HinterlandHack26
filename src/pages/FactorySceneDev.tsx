@@ -2,6 +2,7 @@ import { useState } from "react";
 import FactoryScene from "@/components/project/review/factory/FactoryScene";
 import FactoryScene3D from "@/components/project/review/factory/FactoryScene3D";
 import { factoryLayout } from "@/components/project/review/factory/layout";
+import PersonCard from "@/components/project/review/factory/PersonCard";
 import VehicleCard from "@/components/project/review/factory/VehicleCard";
 
 // The mockup's scene, served from the handoff folder by the dev server.
@@ -18,11 +19,17 @@ export default function FactorySceneDev() {
   const [view, setView] = useState<"3D" | "SVG">("3D");
   const [following, setFollowing] = useState(false);
   const vehicle = factoryLayout.vehicles.find((item) => item.id === selectedId);
+  const person = factoryLayout.people.find((item) => item.id === selectedId);
   const select = (id: string | null) => {
     setSelectedId(id);
     setFollowing(false);
   };
   const scene = { layout: factoryLayout, selectedId, onSelect: select, paused, speed };
+  const card = {
+    following,
+    onFollow: () => setFollowing(view === "3D" && !following),
+    onClose: () => select(null),
+  };
   const selected =
     factoryLayout.people.find((person) => person.id === selectedId)?.name ??
     factoryLayout.vehicles.find((vehicle) => vehicle.id === selectedId)?.id;
@@ -36,15 +43,14 @@ export default function FactorySceneDev() {
           <FactoryScene {...scene} />
         )}
         {compare && <Tag>{view === "3D" ? "FactoryScene3D" : "FactoryScene (SVG)"}</Tag>}
-        {vehicle && (
+        {(vehicle || person) && (
           <div className="absolute top-4 right-4">
-            <VehicleCard
-              vehicle={vehicle}
-              // Following moves the 3D camera; the SVG view has a fixed one.
-              following={following}
-              onFollow={() => setFollowing(view === "3D" && !following)}
-              onClose={() => select(null)}
-            />
+            {/* Following moves the 3D camera; the SVG view has a fixed one. */}
+            {vehicle ? (
+              <VehicleCard {...card} vehicle={vehicle} />
+            ) : (
+              person && <PersonCard {...card} person={person} />
+            )}
           </div>
         )}
       </div>
