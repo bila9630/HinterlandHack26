@@ -26,8 +26,6 @@ export default function ProjectPage() {
   const [processes, setProcesses] = useState<Record<string, ProcessStep[]>>({});
   const [processGoodsId, setProcessGoodsId] = useState<string | null>(null);
   const [staffing, setStaffing] = useState<Staffing>(DEFAULT_STAFFING);
-  // The Offer step goes summary for approval → offer for the customer.
-  const [showOffer, setShowOffer] = useState(false);
   const slots = useMemo(() => layoutGoods(goods), [goods]);
 
   function addGoods(input: Omit<Goods, "id">) {
@@ -91,9 +89,12 @@ export default function ProjectPage() {
     );
   }
 
-  if (step === 5) {
-    return showOffer ? <OfferPage /> : <ReviewPage onContinue={() => setShowOffer(true)} />;
+  if (step === 4) {
+    const live = chosen && { layout: chosen, workstations, processes: Object.values(processes), staffing };
+    return <ReviewPage live={live} onContinue={() => setStep(5)} />;
   }
+
+  if (step === 5) return <OfferPage />;
 
   if (step > 1) {
     return (

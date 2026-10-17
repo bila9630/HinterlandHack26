@@ -10,7 +10,7 @@ const noRaycast = () => null;
 type Vec3 = [number, number, number];
 
 // Flat-shaded box: lighter top, darker +x side, base colour on the +z side.
-function Block({ size, position, color }: { size: Vec3; position: Vec3; color: string }) {
+export function Block({ size, position, color }: { size: Vec3; position: Vec3; color: string }) {
   const ghost = useContext(GhostContext);
   const shades = useMemo(() => {
     const base = new Color(color);

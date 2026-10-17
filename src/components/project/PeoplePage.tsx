@@ -1,17 +1,20 @@
 import { RefObject, useState } from "react";
 import { Html } from "@react-three/drei";
-import { Frown, Minus, Plus, Smile } from "lucide-react";
-import { FacilityLayout } from "./layouts";
+import { BadgeEuro, Frown, Minus, Plus, Smile, TriangleAlert } from "lucide-react";
+import { FacilityLayout, ZONE_LABELS } from "./layouts";
 import LayoutScene from "./LayoutScene";
+import SalaryGroupsDialog from "./SalaryGroupsDialog";
 import WorkerFigure, { WorkerAvatar } from "./WorkerFigure";
 import { PlacedWorkstation } from "./workstations";
 import {
+  CROWDED_STATION,
   MAX_DAYS,
   ROLES,
   RoleId,
   SHIFT_HOURS,
   Staffing,
   headcount,
+  roleWage,
   staffCost,
   teamMood,
   thousands,
@@ -156,8 +159,56 @@ function CostCard({ staffing }: { staffing: Staffing }) {
   );
 }
 
+// One warning per station that nobody works at, or where so many work that they get in each other's way.
+function StaffingWarnings({ staffing }: { staffing: Staffing }) {
+  const warnings = ROLES.flatMap((role) => {
+    const count = staffing.counts[role.id];
+    const zone = ZONE_LABELS[role.zone];
+    if (count === 0) {
+      return [
+        {
+          id: role.id,
+          title: `${zone} has no one`,
+          text: `No ${role.name.toLowerCase()} is assigned to this station. You should add at least one person.`,
+        },
+      ];
+    }
+    if (count >= CROWDED_STATION) {
+      return [
+        {
+          id: role.id,
+          title: `${zone} is crowded`,
+          text: `${count} ${role.name.toLowerCase()}s share one station. You should split them across shifts or add another workstation.`,
+        },
+      ];
+    }
+    return [];
+  });
+  if (warnings.length === 0) return null;
+
+  return (
+    <ul className="space-y-2">
+      {warnings.map((warning) => (
+        <li
+          key={warning.id}
+          className="flex gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-3 shadow-lg shadow-slate-900/5"
+        >
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
+            <TriangleAlert className="size-3.5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-red-900">{warning.title}</p>
+            <p className="mt-0.5 text-[10px] leading-relaxed text-red-700">{warning.text}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function PeoplePage({ layout, workstations, staffing, onStaffingChange, onContinue }: Props) {
   const [selected, setSelected] = useState<RoleId | null>(null);
+  const [editingSalaries, setEditingSalaries] = useState(false);
   const people = headcount(staffing);
   const update = (patch: Partial<Staffing>) => onStaffingChange({ ...staffing, ...patch });
 
@@ -216,10 +267,22 @@ export default function PeoplePage({ layout, workstations, staffing, onStaffingC
 
       <div className="relative z-10 order-1 m-4 space-y-3 lg:absolute lg:top-4 lg:bottom-4 lg:left-4 lg:m-0 lg:w-[280px] lg:overflow-y-auto">
         <section className="rounded-2xl bg-white p-4 shadow-lg shadow-slate-900/5">
-          <h1 className="text-[15px] font-bold tracking-tight">People</h1>
-          <p className="mt-0.5 text-[10px] text-slate-500">
-            {people} {people === 1 ? "person" : "people"} · {SHIFT_HOURS} h shifts
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h1 className="text-[15px] font-bold tracking-tight">People</h1>
+              <p className="mt-0.5 text-[10px] text-slate-500">
+                {people} {people === 1 ? "person" : "people"} · {SHIFT_HOURS} h shifts
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditingSalaries(true)}
+              className="flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700 transition hover:bg-slate-50 focus:ring-4 focus:ring-blue-100 focus:outline-none"
+            >
+              <BadgeEuro className="size-3.5 text-blue-600" aria-hidden="true" />
+              Salary groups
+            </button>
+          </div>
 
           <ul className="mt-3 space-y-1.5">
             {ROLES.map((role) => (
@@ -233,7 +296,7 @@ export default function PeoplePage({ layout, workstations, staffing, onStaffingC
                 <WorkerAvatar tone={role.tone} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[11px] font-semibold">{role.name}</p>
-                  <p className="text-[9px] text-slate-500">{wage(role.wage)}</p>
+                  <p className="text-[9px] text-slate-500">{wage(roleWage(staffing, role.id))}</p>
                 </div>
                 <Stepper
                   label={role.name.toLowerCase()}
@@ -280,9 +343,17 @@ export default function PeoplePage({ layout, workstations, staffing, onStaffingC
         </section>
       </div>
 
-      <div className="relative z-10 order-3 m-4 lg:absolute lg:top-4 lg:right-4 lg:m-0 lg:w-[244px]">
+      <div className="relative z-10 order-3 m-4 lg:absolute lg:top-4 lg:right-4 lg:m-0 lg:w-[244px] space-y-3">
         <CostCard staffing={staffing} />
+        <StaffingWarnings staffing={staffing} />
       </div>
+
+      <SalaryGroupsDialog
+        open={editingSalaries}
+        tariffs={staffing.tariffs}
+        onClose={() => setEditingSalaries(false)}
+        onSave={(tariffs) => update({ tariffs })}
+      />
     </main>
   );
 }
