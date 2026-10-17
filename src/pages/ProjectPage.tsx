@@ -5,10 +5,12 @@ import GoodsList from "@/components/project/GoodsList";
 import LayoutFloor, { FloorMode } from "@/components/project/LayoutFloor";
 import LayoutGallery, { LayoutChoice } from "@/components/project/LayoutGallery";
 import OfferPage from "@/components/project/OfferPage";
+import ProcessPage from "@/components/project/ProcessPage";
 import ReviewPage from "@/components/project/ReviewPage";
 import { LAYOUTS } from "@/components/project/layouts";
 import { Goods, layoutGoods } from "@/components/project/goods";
 import { PlacedWorkstation } from "@/components/project/workstations";
+import { ProcessStep } from "@/components/project/process";
 import { STEPS, useStep } from "@/hooks/useStep";
 
 export default function ProjectPage() {
@@ -18,6 +20,9 @@ export default function ProjectPage() {
   // The Workstations step goes gallery → layout on the floor → placing workstations.
   const [floorMode, setFloorMode] = useState<FloorMode | null>(null);
   const [workstations, setWorkstations] = useState<PlacedWorkstation[]>([]);
+  // One process per kind of goods (keyed by goods id, or "all" before any goods exist).
+  const [processes, setProcesses] = useState<Record<string, ProcessStep[]>>({});
+  const [processGoodsId, setProcessGoodsId] = useState<string | null>(null);
   // The Offer step goes summary for approval → offer for the customer.
   const [showOffer, setShowOffer] = useState(false);
   const slots = useMemo(() => layoutGoods(goods), [goods]);
@@ -29,12 +34,16 @@ export default function ProjectPage() {
   function chooseLayout(choice: LayoutChoice) {
     // Placed workstations only make sense on the layout they were placed on.
     const sameLayout = choice.kind === "example" && layout.kind === "example" && choice.id === layout.id;
-    if (!sameLayout) setWorkstations([]);
+    if (!sameLayout) {
+      setWorkstations([]);
+      setProcesses({});
+    }
     setLayout(choice);
   }
 
+  const chosen = layout.kind === "example" ? LAYOUTS.find((item) => item.id === layout.id) : undefined;
+
   if (step === 1) {
-    const chosen = layout.kind === "example" ? LAYOUTS.find((item) => item.id === layout.id) : undefined;
     if (floorMode && chosen) {
       return (
         <LayoutFloor
@@ -49,6 +58,22 @@ export default function ProjectPage() {
       );
     }
     return <LayoutGallery choice={layout} onChoose={chooseLayout} onUse={() => setFloorMode("summary")} />;
+  }
+
+  if (step === 2 && chosen) {
+    const processKey = goods.find((item) => item.id === processGoodsId)?.id ?? goods[0]?.id ?? "all";
+    return (
+      <ProcessPage
+        layout={chosen}
+        workstations={workstations}
+        goods={goods}
+        activeGoodsId={processKey === "all" ? null : processKey}
+        onActiveGoodsChange={setProcessGoodsId}
+        steps={processes[processKey] ?? []}
+        onStepsChange={(next) => setProcesses((current) => ({ ...current, [processKey]: next }))}
+        onContinue={() => setStep(3)}
+      />
+    );
   }
 
   if (step === 5) {

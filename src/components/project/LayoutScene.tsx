@@ -22,7 +22,7 @@ const GRID_COLOR = "#ffffff";
 const DOCK_COLORS = { inbound: "#2c4fd6", outbound: "#d9822b" };
 
 type Point = [number, number, number];
-type Labels = RefObject<HTMLDivElement | null>;
+export type Labels = RefObject<HTMLDivElement | null>;
 type Tiles = ReturnType<typeof layoutTiles>;
 
 export type FloorPointer = "move" | "down" | "up";
@@ -158,9 +158,23 @@ type FloorProps = {
   // Pointer positions on the floor, in metres from the floor's far corner.
   onFloorPointer?: (event: FloorPointer, x: number, z: number) => void;
   onSelectWorkstation?: (id: string) => void;
+  // Extra things drawn on the floor, in floor squares from the floor's far corner.
+  overlay?: (labels: Labels) => ReactNode;
+  // Hides the zone and dock labels, for small previews.
+  quiet?: boolean;
 };
 
-function Floor({ layout, labels, showLabels, workstations, draft, onFloorPointer, onSelectWorkstation }: FloorProps) {
+function Floor({
+  layout,
+  labels,
+  showLabels,
+  workstations,
+  draft,
+  onFloorPointer,
+  onSelectWorkstation,
+  overlay,
+  quiet = false,
+}: FloorProps) {
   const columns = layout.grid[0].length;
   const rows = layout.grid.length;
   const tiles = useMemo(() => layoutTiles(layout), [layout]);
@@ -238,7 +252,7 @@ function Floor({ layout, labels, showLabels, workstations, draft, onFloorPointer
               <DockDoor color={DOCK_COLORS[dock.kind]} />
             </OnFloor>
           ))}
-          {!showLabels && (
+          {!showLabels && !quiet && (
             <Html
               portal={labels as RefObject<HTMLElement>}
               position={[dock.label.x / TILE, 0.8, dock.label.z / TILE]}
@@ -253,7 +267,9 @@ function Floor({ layout, labels, showLabels, workstations, draft, onFloorPointer
         </group>
       ))}
       {draft && <Draft draft={draft} labels={labels} />}
+      {overlay?.(labels)}
       {showLabels &&
+        !quiet &&
         layoutZones(layout)
           .filter((zone) => zone.kind !== "lane")
           .map((zone) => (
