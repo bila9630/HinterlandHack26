@@ -93,14 +93,10 @@ function zoneOutline(tiles: Tiles, kinds: ZoneKind[]) {
   return points;
 }
 
-// Places a model built in metres at a footprint centre given in metres.
+// Places a model built in metres at a footprint centre given in metres; the model turns itself.
 function OnFloor({ placement, children }: { placement: Placement; children: ReactNode }) {
   return (
-    <group
-      position={[placement.x / TILE, 0, placement.z / TILE]}
-      rotation-y={placement.rotated ? Math.PI / 2 : 0}
-      scale={1 / TILE}
-    >
+    <group position={[placement.x / TILE, 0, placement.z / TILE]} scale={1 / TILE}>
       {children}
     </group>
   );
@@ -130,7 +126,7 @@ function Draft({ draft, labels }: { draft: SceneDraft; labels: Labels }) {
       </mesh>
       <Line points={outline} color={color} lineWidth={2} dashed dashSize={0.08} gapSize={0.06} />
       <OnFloor placement={draft.placement}>
-        <WorkstationModel type={draft.type} ghost />
+        <WorkstationModel type={draft.type} rotated={draft.placement.rotated} ghost />
       </OnFloor>
       <Html
         portal={labels as RefObject<HTMLElement>}
@@ -241,7 +237,7 @@ function Floor({
             }}
           >
             <OnFloor placement={item}>
-              <WorkstationModel type={workstationType(item.typeId)} />
+              <WorkstationModel type={workstationType(item.typeId)} rotated={item.rotated} />
             </OnFloor>
           </group>
         ))}
@@ -249,7 +245,7 @@ function Floor({
         <group key={dock.kind}>
           {dock.doors.map((door, index) => (
             <OnFloor key={index} placement={door}>
-              <DockDoor color={DOCK_COLORS[dock.kind]} />
+              <DockDoor color={DOCK_COLORS[dock.kind]} rotated={door.rotated} />
             </OnFloor>
           ))}
           {!showLabels && !quiet && (

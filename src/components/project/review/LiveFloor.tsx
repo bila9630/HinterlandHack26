@@ -5,7 +5,7 @@ import { Group } from "three";
 import { TILE } from "../layouts";
 import { ROLES } from "../people";
 import WorkerFigure from "../WorkerFigure";
-import WorkstationModel, { Block } from "../WorkstationModel";
+import WorkstationModel, { Block, FORK_LOAD_AHEAD, ForkLoad } from "../WorkstationModel";
 import { workstationType } from "../workstations";
 import { FloorPath, ForkliftRoute } from "./floorPaths";
 import { LivePlan, SHIFT_MINUTES } from "./liveSim";
@@ -25,13 +25,6 @@ const FORKLIFT_TURN = 0.6;
 const CARTON = "#e39b3d";
 const MOVER = "#475569";
 const FORKLIFT = workstationType("forklift");
-// Where the cartons sit on a pallet, in pallet metres.
-const CARTON_SPOTS: [number, number][] = [
-  [-0.3, -0.3],
-  [0.3, -0.3],
-  [-0.3, 0.3],
-  [0.3, 0.3],
-];
 
 type Vec = { x: number; z: number };
 const lerp = (from: Vec, to: Vec, t: number) => ({ x: from.x + (to.x - from.x) * t, z: from.z + (to.z - from.z) * t });
@@ -70,18 +63,6 @@ function RouteLine({ route }: { route: ForkliftRoute }) {
       dashSize={0.05}
       gapSize={0.05}
     />
-  );
-}
-
-// A pallet with its cartons, in metres.
-function Pallet() {
-  return (
-    <group scale={1.8}>
-      <Block size={[1.2, 0.15, 1.2]} position={[0, 0.075, 0]} color="#c49a63" />
-      {CARTON_SPOTS.map(([x, z], spot) => (
-        <Block key={spot} size={[0.55, 0.45, 0.55]} position={[x, 0.375, z]} color={CARTON} />
-      ))}
-    </group>
   );
 }
 
@@ -173,15 +154,15 @@ function MovingForklift({
     dropped.current.visible = round.moves && t >= round.droppedAt;
   });
 
-  // The pallet rides on the forks, 2 m ahead of the forklift's centre, and is set down there.
-  const ahead = { x: -Math.cos(round.dropAngle) * 2, z: Math.sin(round.dropAngle) * 2 };
+  // The pallet rides on the forks ahead of the forklift's centre, and is set down there.
+  const ahead = { x: -Math.cos(round.dropAngle) * FORK_LOAD_AHEAD, z: Math.sin(round.dropAngle) * FORK_LOAD_AHEAD };
   return (
     <>
       <group ref={forklift}>
         <group scale={1 / TILE}>
           <WorkstationModel type={FORKLIFT} />
-          <group ref={carried} position={[-2, 0.3, 0]}>
-            <Pallet />
+          <group ref={carried} position={[-FORK_LOAD_AHEAD, 0, 0]}>
+            <ForkLoad lifted />
           </group>
         </group>
       </group>
@@ -192,7 +173,7 @@ function MovingForklift({
         rotation-y={round.dropAngle}
       >
         <group scale={1 / TILE}>
-          <Pallet />
+          <ForkLoad />
         </group>
       </group>
     </>

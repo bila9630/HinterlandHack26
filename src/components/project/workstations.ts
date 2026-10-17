@@ -23,11 +23,14 @@ export type WorkstationType = {
   tone: { bg: string; fg: string };
 };
 
+// Sizes match the factory scene's models (one floor cell is 10 m).
 export const RACK_LEVELS = 3;
-export const RACK_BAY = 2.7;
-const RACK_LENGTH = 22;
+export const RACK_BAY = 6.2;
+const RACK_LENGTH = 26;
 export const ASSEMBLY_STATIONS = 3;
-const ASSEMBLY_LENGTH = 40;
+const ASSEMBLY_LENGTH = 42;
+// The assembly line's conveyor runs along its back; its operators stand in front of it.
+export const CONVEYOR_DEPTH = 4;
 
 export const WORKSTATION_TYPES: WorkstationType[] = [
   {
@@ -35,7 +38,7 @@ export const WORKSTATION_TYPES: WorkstationType[] = [
     name: "Pallet rack",
     fits: ["warehouse"],
     length: RACK_LENGTH,
-    depth: 2,
+    depth: 4.2,
     specs: [
       { label: "Length", value: `${RACK_LENGTH} m` },
       { label: "Levels", value: String(RACK_LEVELS) },
@@ -48,7 +51,7 @@ export const WORKSTATION_TYPES: WorkstationType[] = [
     name: "Assembly line",
     fits: ["production"],
     length: ASSEMBLY_LENGTH,
-    depth: 5,
+    depth: 8,
     specs: [
       { label: "Length", value: `${ASSEMBLY_LENGTH} m` },
       { label: "Stations", value: String(ASSEMBLY_STATIONS) },
@@ -59,10 +62,10 @@ export const WORKSTATION_TYPES: WorkstationType[] = [
     id: "packing-table",
     name: "Packing table",
     fits: ["production", "inbound", "outbound"],
-    length: 9,
+    length: 7,
     depth: 4,
     specs: [
-      { label: "Size", value: "9 × 4 m" },
+      { label: "Size", value: "7 × 4 m" },
       { label: "Packers", value: "4" },
     ],
     tone: { bg: "#fdf0e2", fg: "#d0782a" },
@@ -71,10 +74,10 @@ export const WORKSTATION_TYPES: WorkstationType[] = [
     id: "forklift",
     name: "Forklift",
     fits: ["lane"],
-    length: 5,
-    depth: 3,
+    length: 8,
+    depth: 4,
     specs: [
-      { label: "Size", value: "5 × 3 m" },
+      { label: "Size", value: "8 × 4 m" },
       { label: "Capacity", value: "1.6 t" },
     ],
     tone: { bg: "#fdf6dc", fg: "#c39410" },
@@ -264,8 +267,8 @@ export function autoPlace(layout: FacilityLayout, existing: PlacedWorkstation[])
   // when the zone is too short for that.
   for (const region of regions.filter((item) => item.kind === "production")) {
     const besideDepth = line.depth + 1 + table.depth;
-    // The line's conveyor runs along its back (-z, or -x when turned), 40% of its depth wide.
-    const conveyorAcross = -line.depth / 2 + (line.depth * 0.4) / 2;
+    // The line's conveyor runs along its back (-z, or -x when turned).
+    const conveyorAcross = -line.depth / 2 + CONVEYOR_DEPTH / 2;
     const options = [
       {
         unit: { length: line.length + 1 + table.length, depth: line.depth, gapAlong: 0, gapAcross: 3 },
