@@ -91,7 +91,7 @@ export default function ProjectPage() {
 
   if (step === 4) {
     const live = chosen && { layout: chosen, workstations, processes: Object.values(processes), staffing };
-    return <ReviewPage live={live} onContinue={() => setStep(5)} />;
+    return <ReviewPage live={live} />;
   }
 
   if (step === 5) return <OfferPage />;
