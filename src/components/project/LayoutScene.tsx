@@ -8,16 +8,18 @@ import {
   ZONE_LABELS,
   ZoneKind,
   formatArea,
+  layoutDocks,
   layoutTiles,
   layoutZones,
 } from "./layouts";
-import WorkstationModel from "./WorkstationModel";
+import WorkstationModel, { DockDoor } from "./WorkstationModel";
 import { PlacedWorkstation, Placement, WorkstationType, footprint, workstationType } from "./workstations";
 
 // One world unit is one floor square (10 m).
 const SLAB = 0.25;
 const SLAB_COLORS = { right: "#b3c0de", left: "#c5cfe7" };
 const GRID_COLOR = "#ffffff";
+const DOCK_COLORS = { inbound: "#2c4fd6", outbound: "#d9822b" };
 
 type Point = [number, number, number];
 type Labels = RefObject<HTMLDivElement | null>;
@@ -163,6 +165,7 @@ function Floor({ layout, labels, showLabels, workstations, draft, onFloorPointer
   const rows = layout.grid.length;
   const tiles = useMemo(() => layoutTiles(layout), [layout]);
   const lanes = useMemo(() => laneLines(layout.grid), [layout]);
+  const docks = useMemo(() => layoutDocks(layout), [layout]);
   const draftType = draft?.type;
   const highlight = useMemo(() => (draftType ? zoneOutline(tiles, draftType.fits) : []), [tiles, draftType]);
   const gridLines = useMemo(() => {
@@ -228,6 +231,27 @@ function Floor({ layout, labels, showLabels, workstations, draft, onFloorPointer
             </OnFloor>
           </group>
         ))}
+      {docks.map((dock) => (
+        <group key={dock.kind}>
+          {dock.doors.map((door, index) => (
+            <OnFloor key={index} placement={door}>
+              <DockDoor color={DOCK_COLORS[dock.kind]} />
+            </OnFloor>
+          ))}
+          {!showLabels && (
+            <Html
+              portal={labels as RefObject<HTMLElement>}
+              position={[dock.label.x / TILE, 0.8, dock.label.z / TILE]}
+              center
+              zIndexRange={[5, 0]}
+            >
+              <span className="pointer-events-none rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold whitespace-nowrap text-slate-900 shadow-sm">
+                {ZONE_LABELS[dock.kind]} docks ×{dock.doors.length}
+              </span>
+            </Html>
+          )}
+        </group>
+      ))}
       {draft && <Draft draft={draft} labels={labels} />}
       {showLabels &&
         layoutZones(layout)
@@ -266,7 +290,8 @@ export default function LayoutScene({ showLabels = true, workstations = [], draf
   const labels = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="relative h-full w-full">
+    // select-none: dragging across the floor would otherwise select the label text.
+    <div className="relative h-full w-full select-none">
       <Canvas orthographic flat camera={{ position: [20, 20, 20], near: 0.1, far: 200 }}>
         <FitCamera columns={layout.grid[0].length} rows={layout.grid.length} />
         <Floor {...floor} labels={labels} showLabels={showLabels} workstations={workstations} draft={draft} />

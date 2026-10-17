@@ -1,6 +1,16 @@
-import { FacilityLayout, TILE, ZONE_LABELS, ZoneKind, layoutSize, layoutTiles } from "./layouts";
+import {
+  DOCK_DEPTH,
+  DOCK_WIDTH,
+  FacilityLayout,
+  TILE,
+  ZONE_LABELS,
+  ZoneKind,
+  layoutDocks,
+  layoutSize,
+  layoutTiles,
+} from "./layouts";
 
-export type WorkstationTypeId = "dock-door" | "pallet-rack" | "assembly-line" | "packing-table" | "forklift";
+export type WorkstationTypeId = "pallet-rack" | "assembly-line" | "packing-table" | "forklift";
 
 export type WorkstationType = {
   id: WorkstationTypeId;
@@ -16,20 +26,10 @@ export type WorkstationType = {
 export const RACK_LEVELS = 3;
 export const RACK_BAY = 2.7;
 const RACK_LENGTH = 22;
+export const ASSEMBLY_STATIONS = 3;
+const ASSEMBLY_LENGTH = 40;
 
 export const WORKSTATION_TYPES: WorkstationType[] = [
-  {
-    id: "dock-door",
-    name: "Dock door",
-    fits: ["inbound", "outbound"],
-    length: 4,
-    depth: 1,
-    specs: [
-      { label: "Width", value: "4 m" },
-      { label: "Height", value: "4.5 m" },
-    ],
-    tone: { bg: "#e8eefe", fg: "#3d6cf0" },
-  },
   {
     id: "pallet-rack",
     name: "Pallet rack",
@@ -47,23 +47,23 @@ export const WORKSTATION_TYPES: WorkstationType[] = [
     id: "assembly-line",
     name: "Assembly line",
     fits: ["production"],
-    length: 20,
-    depth: 2,
+    length: ASSEMBLY_LENGTH,
+    depth: 5,
     specs: [
-      { label: "Length", value: "20 m" },
-      { label: "Stations", value: "5" },
+      { label: "Length", value: `${ASSEMBLY_LENGTH} m` },
+      { label: "Stations", value: String(ASSEMBLY_STATIONS) },
     ],
     tone: { bg: "#eef6d9", fg: "#6c8a22" },
   },
   {
     id: "packing-table",
     name: "Packing table",
-    fits: ["production"],
-    length: 3,
-    depth: 2,
+    fits: ["production", "inbound", "outbound"],
+    length: 9,
+    depth: 4,
     specs: [
-      { label: "Size", value: "3 × 2 m" },
-      { label: "Packers", value: "2" },
+      { label: "Size", value: "9 × 4 m" },
+      { label: "Packers", value: "4" },
     ],
     tone: { bg: "#fdf0e2", fg: "#d0782a" },
   },
@@ -71,10 +71,10 @@ export const WORKSTATION_TYPES: WorkstationType[] = [
     id: "forklift",
     name: "Forklift",
     fits: ["lane"],
-    length: 3,
-    depth: 2,
+    length: 5,
+    depth: 3,
     specs: [
-      { label: "Size", value: "3 × 2 m" },
+      { label: "Size", value: "5 × 3 m" },
       { label: "Capacity", value: "1.6 t" },
     ],
     tone: { bg: "#fdf6dc", fg: "#c39410" },
@@ -109,6 +109,9 @@ export function snapPlacement(layout: FacilityLayout, type: WorkstationType, pla
   return { ...placement, x: minX + length / 2, z: minZ + depth / 2 };
 }
 
+// Only the footprint matters for dock doors, which are fixed parts of the layout.
+const DOCK_TYPE = { length: DOCK_WIDTH, depth: DOCK_DEPTH } as WorkstationType;
+
 // Why the workstation can't go here, or null when it fits.
 export function placementProblem(
   layout: FacilityLayout,
@@ -128,14 +131,16 @@ export function placementProblem(
   );
   if (outside) return `Needs ${fitsLabel(type)}`;
 
-  const overlaps = others.some((other) => {
-    const otherBox = footprint(workstationType(other.typeId), other);
-    return (
-      otherBox.minX < box.maxX - epsilon &&
-      otherBox.maxX > box.minX + epsilon &&
-      otherBox.minZ < box.maxZ - epsilon &&
-      otherBox.maxZ > box.minZ + epsilon
-    );
-  });
-  return overlaps ? "Overlaps another workstation" : null;
+  const hits = (other: ReturnType<typeof footprint>) =>
+    other.minX < box.maxX - epsilon &&
+    other.maxX > box.minX + epsilon &&
+    other.minZ < box.maxZ - epsilon &&
+    other.maxZ > box.minZ + epsilon;
+
+  if (others.some((other) => hits(footprint(workstationType(other.typeId), other)))) {
+    return "Overlaps another workstation";
+  }
+  const dockDoors = layoutDocks(layout).flatMap((dock) => dock.doors);
+  if (dockDoors.some((door) => hits(footprint(DOCK_TYPE, door)))) return "Blocks a dock door";
+  return null;
 }

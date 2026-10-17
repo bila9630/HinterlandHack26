@@ -123,7 +123,16 @@ export default function LayoutFloor({
     const placement = snapPlacement(layout, draftType, { x, z, rotated: draft.placement?.rotated ?? false });
     if (event === "move" && !draft.dropped) setDraft({ ...draft, placement });
     if (event === "down" && draft.dropped) setDraft({ ...draft, placement, dropped: false });
-    if (event === "up" && !draft.dropped) setDraft({ ...draft, placement, dropped: true });
+    if (event === "up" && !draft.dropped) {
+      // A new workstation dropped on a valid spot is placed straight away; otherwise the
+      // card stays open to explain the problem or to confirm a move.
+      if (!draft.editingId && !placementProblem(layout, draftType, placement, workstations)) {
+        onWorkstationsChange([...workstations, { ...placement, typeId: draft.typeId, id: crypto.randomUUID() }]);
+        setDraft(null);
+      } else {
+        setDraft({ ...draft, placement, dropped: true });
+      }
+    }
   }
 
   function rotate() {

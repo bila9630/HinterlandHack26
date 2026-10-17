@@ -1,8 +1,7 @@
-import { Columns3, Factory, Forklift, LucideIcon, Package, Warehouse } from "lucide-react";
+import { Columns3, Factory, Forklift, LucideIcon, Package } from "lucide-react";
 import { WORKSTATION_TYPES, WorkstationTypeId, fitsLabel } from "./workstations";
 
 export const WORKSTATION_ICONS: Record<WorkstationTypeId, LucideIcon> = {
-  "dock-door": Warehouse,
   "pallet-rack": Columns3,
   "assembly-line": Factory,
   "packing-table": Package,

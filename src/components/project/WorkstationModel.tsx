@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo } from "react";
 import { Color } from "three";
-import { RACK_BAY, RACK_LEVELS, WorkstationType } from "./workstations";
+import { DOCK_DEPTH, DOCK_WIDTH } from "./layouts";
+import { ASSEMBLY_STATIONS, RACK_BAY, RACK_LEVELS, WorkstationType } from "./workstations";
 
 // Ghost models are see-through and ignore the pointer, so the floor below keeps receiving it.
 const GhostContext = createContext(false);
@@ -70,21 +71,34 @@ function PalletRack({ length, depth }: { length: number; depth: number }) {
   );
 }
 
+// A raised conveyor along the back with work cells spread along the front.
 function AssemblyLine({ length, depth }: { length: number; depth: number }) {
-  const items = Math.floor(length / 4);
+  const conveyor = depth * 0.4;
+  const cell = 3;
   return (
     <>
-      <Block size={[length, 0.9, depth * 0.6]} position={[0, 0.45, 0]} color="#8b95a8" />
-      {Array.from({ length: items }, (_, index) => (
+      <Block
+        size={[length, 1.6, conveyor]}
+        position={[0, 0.8, -depth / 2 + conveyor / 2]}
+        color="#8cb33a"
+      />
+      {Array.from({ length: ASSEMBLY_STATIONS }, (_, index) => (
         <Block
           key={index}
-          size={[0.9, 0.6, 0.8]}
-          position={[-length / 2 + (index + 0.5) * (length / items), 1.2, 0]}
-          color={CARTON}
+          size={[cell, 2.4, cell * 0.8]}
+          position={[-length / 2 + ((index + 0.5) * length) / ASSEMBLY_STATIONS, 1.2, depth / 2 - (cell * 0.8) / 2]}
+          color="#d3d9e4"
         />
       ))}
     </>
   );
+}
+
+const DOCK_HEIGHT = 6;
+
+// A dock door standing on the outer wall, running along x.
+export function DockDoor({ color }: { color: string }) {
+  return <Block size={[DOCK_WIDTH, DOCK_HEIGHT, DOCK_DEPTH]} position={[0, DOCK_HEIGHT / 2, 0]} color={color} />;
 }
 
 export default function WorkstationModel({ type, ghost = false }: { type: WorkstationType; ghost?: boolean }) {
@@ -92,20 +106,26 @@ export default function WorkstationModel({ type, ghost = false }: { type: Workst
 
   return (
     <GhostContext.Provider value={ghost}>
-      {type.id === "dock-door" && <Block size={[length, 4.5, 0.4]} position={[0, 2.25, 0]} color="#d9822b" />}
       {type.id === "pallet-rack" && <PalletRack length={length} depth={depth} />}
       {type.id === "assembly-line" && <AssemblyLine length={length} depth={depth} />}
       {type.id === "packing-table" && (
         <>
-          <Block size={[length, 0.9, depth * 0.75]} position={[0, 0.45, 0]} color="#c49a63" />
-          <Block size={[0.8, 0.7, 0.8]} position={[-0.6, 1.25, 0]} color={CARTON} />
+          <Block size={[length, 1, depth * 0.75]} position={[0, 0.5, 0]} color="#c49a63" />
+          <Block size={[1.6, 1.2, 1.6]} position={[-length / 2 + 1.2, 1.6, 0]} color={CARTON} />
+          <Block size={[1.2, 1, 1.2]} position={[-length / 2 + 3, 1.5, 0.3]} color={CARTON} />
+          <Block size={[1.2, 0.9, 1.2]} position={[0.8, 1.45, -0.3]} color={CARTON} />
+          <Block size={[1.6, 1.2, 1.6]} position={[length / 2 - 1.2, 1.6, 0]} color={CARTON} />
+          <Block size={[1.3, 1, 1.3]} position={[length / 2 - 1.2, 2.7, 0]} color={CARTON} />
         </>
       )}
       {type.id === "forklift" && (
         <>
-          <Block size={[1.8, 1.3, depth * 0.6]} position={[0.5, 0.65, 0]} color="#f2b632" />
-          <Block size={[0.2, 3, depth * 0.55]} position={[-0.6, 1.5, 0]} color={FRAME} />
-          <Block size={[0.8, 0.1, depth * 0.45]} position={[-1.0, 0.1, 0]} color={FRAME} />
+          {/* Body, overhead guard, mast at the front (-x) and forks sticking out ahead of it. */}
+          <Block size={[3, 2.2, depth * 0.7]} position={[0.9, 1.1, 0]} color="#f2b632" />
+          <Block size={[0.15, 1.4, depth * 0.7]} position={[0.1, 2.9, 0]} color={FRAME} />
+          <Block size={[1.8, 0.15, depth * 0.7]} position={[0.9, 3.6, 0]} color={FRAME} />
+          <Block size={[0.3, 4.2, depth * 0.6]} position={[-0.85, 2.1, 0]} color={FRAME} />
+          <Block size={[1.4, 0.15, depth * 0.5]} position={[-1.75, 0.15, 0]} color={FRAME} />
         </>
       )}
     </GhostContext.Provider>

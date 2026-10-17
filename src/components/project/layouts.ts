@@ -120,6 +120,46 @@ export function layoutZones(layout: FacilityLayout) {
   }).filter((zone) => zone.area > 0);
 }
 
+export const DOCK_WIDTH = 7;
+const DOCKS_PER_ZONE = 2;
+export const DOCK_DEPTH = 0.6;
+
+export type DockKind = "inbound" | "outbound";
+
+// Every layout gets two dock doors per inbound and outbound zone, spread along the
+// outer wall that zone touches most. Positions are door centres in metres; a door
+// along a wall at x = 0 or x = max is turned to run along z.
+export function layoutDocks(layout: FacilityLayout) {
+  const columns = layout.grid[0].length;
+  const rows = layout.grid.length;
+  const tiles = layoutTiles(layout);
+
+  return (["inbound", "outbound"] as DockKind[]).flatMap((kind) => {
+    const own = tiles.filter((tile) => tile.kind === kind);
+    const walls = [
+      { tiles: own.filter((tile) => tile.z === 0), along: "x", at: DOCK_DEPTH / 2 },
+      { tiles: own.filter((tile) => tile.z === rows - 1), along: "x", at: rows * TILE - DOCK_DEPTH / 2 },
+      { tiles: own.filter((tile) => tile.x === 0), along: "z", at: DOCK_DEPTH / 2 },
+      { tiles: own.filter((tile) => tile.x === columns - 1), along: "z", at: columns * TILE - DOCK_DEPTH / 2 },
+    ];
+    const wall = walls.reduce((best, current) => (current.tiles.length > best.tiles.length ? current : best));
+    if (wall.tiles.length === 0) return [];
+
+    const positions = wall.tiles.map((tile) => (wall.along === "x" ? tile.x : tile.z));
+    const start = Math.min(...positions) * TILE;
+    const end = (Math.max(...positions) + 1) * TILE;
+    const doors = Array.from({ length: DOCKS_PER_ZONE }, (_, index) => {
+      const along = start + ((end - start) * (index + 1)) / (DOCKS_PER_ZONE + 1);
+      return wall.along === "x"
+        ? { x: along, z: wall.at, rotated: false }
+        : { x: wall.at, z: along, rotated: true };
+    });
+    const middle = (start + end) / 2;
+    const label = wall.along === "x" ? { x: middle, z: wall.at } : { x: wall.at, z: middle };
+    return [{ kind, doors, label }];
+  });
+}
+
 export function formatArea(m2: number) {
   return `${m2.toLocaleString("en-US")} m²`;
 }
