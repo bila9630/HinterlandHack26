@@ -1,4 +1,5 @@
 import { Goods, formatWeight, totalWeight } from "./goods";
+import { useStep } from "@/hooks/useStep";
 
 type Props = {
   goods: Goods[];
@@ -31,6 +32,7 @@ function PackageIcon() {
 }
 
 export default function GoodsList({ goods, onRemove }: Props) {
+  const [, setStep] = useStep();
   const weights = goods.map(totalWeight);
   const total = weights.some((weight) => weight !== null)
     ? weights.reduce<number>((sum, weight) => sum + (weight ?? 0), 0)
@@ -91,9 +93,10 @@ export default function GoodsList({ goods, onRemove }: Props) {
           </div>
           <button
             type="button"
-            className="mt-2.5 w-full rounded-lg bg-blue-600 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200"
+            onClick={() => setStep(1)}
+            className="mt-2.5 w-full cursor-pointer rounded-lg bg-blue-600 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200"
           >
-            Continue to lanes →
+            Continue to workstations →
           </button>
         </>
       )}

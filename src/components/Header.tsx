@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { Link, useLocation } from "react-router";
-
-const STEPS = ["Goods", "Lanes", "Transport", "Costs", "Review", "Offer"];
+import { Check } from "lucide-react";
+import { STEPS, useStep } from "@/hooks/useStep";
 
 function LogoCube() {
   return (
@@ -13,21 +13,33 @@ function LogoCube() {
   );
 }
 
-function Stepper({ current }: { current: number }) {
+function Stepper() {
+  const [current, setStep] = useStep();
+
   return (
     <nav aria-label="Project steps" className="hidden items-center gap-2.5 md:flex">
       {STEPS.map((step, index) => (
         <Fragment key={step}>
           {index > 0 && <span className="h-px w-3 bg-slate-300" aria-hidden="true" />}
-          <span
+          <button
+            type="button"
+            onClick={() => setStep(index)}
             aria-current={index === current ? "step" : undefined}
-            className={`rounded-full px-3 py-1.5 text-[11px] whitespace-nowrap ${
-              index === current ? "bg-blue-600 font-semibold text-white" : "font-medium text-slate-500"
+            className={`flex cursor-pointer items-center rounded-full px-3 py-1.5 text-[11px] whitespace-nowrap transition-colors ${
+              index === current
+                ? "bg-blue-600 font-semibold text-white"
+                : index < current
+                  ? "bg-emerald-50 font-semibold text-emerald-700 hover:bg-emerald-100"
+                  : "font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             }`}
           >
-            <span className="mr-1.5">{index + 1}</span>
+            {index < current ? (
+              <Check className="mr-1.5 size-3" strokeWidth={3} aria-label="Done" />
+            ) : (
+              <span className="mr-1.5">{index + 1}</span>
+            )}
             {step}
-          </span>
+          </button>
         </Fragment>
       ))}
     </nav>
@@ -44,7 +56,7 @@ export default function Header() {
         <LogoCube />
         <span className="text-lg font-bold tracking-tight">CostCube</span>
       </Link>
-      {inProject && <Stepper current={0} />}
+      {inProject && <Stepper />}
       <div className="flex items-center gap-2">
         <div className="flex size-7 items-center justify-center rounded-full bg-blue-50 text-[11px] font-bold text-blue-600">
           LE

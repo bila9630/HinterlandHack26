@@ -2,14 +2,28 @@ import { useMemo, useState } from "react";
 import AddGoodsForm from "@/components/project/AddGoodsForm";
 import FloorScene from "@/components/project/FloorScene";
 import GoodsList from "@/components/project/GoodsList";
+import LayoutGallery, { LayoutChoice } from "@/components/project/LayoutGallery";
 import { Goods, layoutGoods } from "@/components/project/goods";
+import { STEPS, useStep } from "@/hooks/useStep";
 
 export default function ProjectPage() {
+  const [step] = useStep();
   const [goods, setGoods] = useState<Goods[]>([]);
+  const [layout, setLayout] = useState<LayoutChoice>({ kind: "example", id: "warehouse-production" });
   const slots = useMemo(() => layoutGoods(goods), [goods]);
 
   function addGoods(input: Omit<Goods, "id">) {
     setGoods((current) => [...current, { ...input, id: crypto.randomUUID() }]);
+  }
+
+  if (step === 1) return <LayoutGallery choice={layout} onChoose={setLayout} />;
+
+  if (step > 1) {
+    return (
+      <main className="flex h-[calc(100vh-3rem)] items-center justify-center text-[12px] text-slate-500">
+        The {STEPS[step]} step is not built yet.
+      </main>
+    );
   }
 
   return (

@@ -19,8 +19,8 @@ const TOTAL_STEPS = 6;
 
 const initialProjects: Project[] = [
   { id: "T-0418", customer: "[Customer A]", goods: 4, stage: "Goods", step: 1, tone: "blue", date: "due 30 Oct" },
-  { id: "T-0415", customer: "[Customer B]", goods: 7, stage: "Lanes", step: 2, tone: "blue", date: "due 28 Oct" },
-  { id: "T-0412", customer: "[Customer C]", goods: 3, stage: "Costs", step: 4, tone: "orange", date: "due 24 Oct" },
+  { id: "T-0415", customer: "[Customer B]", goods: 7, stage: "Workstations", step: 2, tone: "blue", date: "due 28 Oct" },
+  { id: "T-0412", customer: "[Customer C]", goods: 3, stage: "People", step: 4, tone: "orange", date: "due 24 Oct" },
   { id: "T-0409", customer: "[Customer D]", goods: 12, stage: "Review", step: 5, tone: "orange", date: "due 22 Oct" },
   { id: "T-0401", customer: "[Customer E]", goods: 5, stage: "Offer sent", step: 6, tone: "green", date: "sent 14 Oct" },
 ];
