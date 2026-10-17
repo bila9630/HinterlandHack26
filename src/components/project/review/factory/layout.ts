@@ -59,6 +59,8 @@ export type Vehicle = {
   loaded?: boolean;
   route: UV[];
   loopSec: number;
+  // Seconds it stands at each stop: where the route repeats a point, and at its start.
+  dwellSec?: number;
   task: string;
   sortAt?: UV;
   showRoute?: boolean;

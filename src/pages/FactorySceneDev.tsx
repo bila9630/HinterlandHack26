@@ -1,17 +1,21 @@
 import { useState } from "react";
 import FactoryScene from "@/components/project/review/factory/FactoryScene";
+import FactoryScene3D from "@/components/project/review/factory/FactoryScene3D";
 import { factoryLayout } from "@/components/project/review/factory/layout";
 
 // The mockup's scene, served from the handoff folder by the dev server.
 const REFERENCE = "/design/factory-scene-handoff/scene.svg";
 const SPEEDS = [0.5, 1, 2, 4];
 
-// Dev only: the factory scene full-screen, optionally next to the mockup it was ported from.
+// Dev only: the factory scene full-screen, in 3D or as the SVG port, optionally next to the
+// mockup it was ported from.
 export default function FactorySceneDev() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [compare, setCompare] = useState(false);
+  const [view, setView] = useState<"3D" | "SVG">("3D");
+  const Scene = view === "3D" ? FactoryScene3D : FactoryScene;
   const selected =
     factoryLayout.people.find((person) => person.id === selectedId)?.name ??
     factoryLayout.vehicles.find((vehicle) => vehicle.id === selectedId)?.id;
@@ -19,14 +23,14 @@ export default function FactorySceneDev() {
   return (
     <div className="fixed inset-0 z-50 flex bg-[#C6E3B8]">
       <div className="relative min-w-0 flex-1">
-        <FactoryScene
+        <Scene
           layout={factoryLayout}
           selectedId={selectedId}
           onSelect={setSelectedId}
           paused={paused}
           speed={speed}
         />
-        {compare && <Tag>FactoryScene</Tag>}
+        {compare && <Tag>{view === "3D" ? "FactoryScene3D" : "FactoryScene (SVG)"}</Tag>}
       </div>
       {compare && (
         <div className="relative min-w-0 flex-1 border-l-2 border-white">
@@ -35,6 +39,15 @@ export default function FactorySceneDev() {
         </div>
       )}
       <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-xl bg-white/95 p-1.5 text-[12px] font-semibold text-slate-700 shadow-lg">
+        {(["3D", "SVG"] as const).map((value) => (
+          <button
+            key={value}
+            className={`rounded-lg px-2 py-1 ${view === value ? "bg-slate-800 text-white" : "hover:bg-slate-100"}`}
+            onClick={() => setView(value)}
+          >
+            {value}
+          </button>
+        ))}
         <button className="rounded-lg px-2.5 py-1 hover:bg-slate-100" onClick={() => setPaused(!paused)}>
           {paused ? "Play" : "Pause"}
         </button>
