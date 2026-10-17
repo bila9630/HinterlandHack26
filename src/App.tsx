@@ -5,6 +5,7 @@ import ProjectsPage from "@/pages/ProjectsPage";
 
 // Loaded on demand so the overview doesn't pull in three.js.
 const ProjectPage = lazy(() => import("@/pages/ProjectPage"));
+const FactorySceneDev = lazy(() => import("@/pages/FactorySceneDev"));
 
 export default function App() {
   return (
@@ -20,6 +21,16 @@ export default function App() {
             </Suspense>
           }
         />
+        {import.meta.env.DEV && (
+          <Route
+            path="/dev/factory-scene"
+            element={
+              <Suspense fallback={null}>
+                <FactorySceneDev />
+              </Suspense>
+            }
+          />
+        )}
       </Routes>
     </div>
   );
