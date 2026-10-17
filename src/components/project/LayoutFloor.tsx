@@ -7,6 +7,7 @@ import {
   PlacedWorkstation,
   Placement,
   WorkstationTypeId,
+  autoPlace,
   placementProblem,
   snapPlacement,
   workstationType,
@@ -192,6 +193,10 @@ export default function LayoutFloor({
             counts={counts}
             placingTypeId={draft?.typeId ?? null}
             onPick={(typeId) => setDraft({ typeId, placement: null, dropped: false })}
+            onAutoPlace={() => {
+              setDraft(null);
+              onWorkstationsChange(autoPlace(layout, workstations));
+            }}
             onContinue={onContinue}
           />
         ) : (

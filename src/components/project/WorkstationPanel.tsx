@@ -1,4 +1,4 @@
-import { Columns3, Factory, Forklift, LucideIcon, Package } from "lucide-react";
+import { Columns3, Factory, Forklift, LucideIcon, Package, Sparkles } from "lucide-react";
 import { WORKSTATION_TYPES, WorkstationTypeId, fitsLabel } from "./workstations";
 
 export const WORKSTATION_ICONS: Record<WorkstationTypeId, LucideIcon> = {
@@ -12,10 +12,11 @@ type Props = {
   counts: Record<string, number>;
   placingTypeId: WorkstationTypeId | null;
   onPick: (typeId: WorkstationTypeId) => void;
+  onAutoPlace: () => void;
   onContinue: () => void;
 };
 
-export default function WorkstationPanel({ counts, placingTypeId, onPick, onContinue }: Props) {
+export default function WorkstationPanel({ counts, placingTypeId, onPick, onAutoPlace, onContinue }: Props) {
   return (
     <section className="rounded-2xl bg-white p-4 shadow-lg shadow-slate-900/5">
       <h1 className="text-[15px] font-bold tracking-tight">Add workstations</h1>
@@ -63,6 +64,21 @@ export default function WorkstationPanel({ counts, placingTypeId, onPick, onCont
         className="mt-3 w-full cursor-pointer rounded-lg bg-blue-600 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 focus:outline-none"
       >
         Continue to process →
+      </button>
+
+      <div className="my-3 flex items-center gap-2 text-[9px] font-semibold tracking-wide text-slate-400 uppercase">
+        <span className="h-px flex-1 bg-slate-200" />
+        or
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+
+      <button
+        type="button"
+        onClick={onAutoPlace}
+        className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50 focus:ring-4 focus:ring-blue-100 focus:outline-none"
+      >
+        <Sparkles className="size-3.5 text-blue-600" aria-hidden="true" />
+        FloorGenie AI
       </button>
     </section>
   );

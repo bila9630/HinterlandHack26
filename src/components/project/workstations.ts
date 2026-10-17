@@ -144,3 +144,55 @@ export function placementProblem(
   if (dockDoors.some((door) => hits(footprint(DOCK_TYPE, door)))) return "Blocks a dock door";
   return null;
 }
+
+// How the auto-planner fills the floor: clear space kept between workstations of the
+// same type (in metres; other types keep 1 m) and how many go into each zone at most.
+const AUTO_PLAN: { typeId: WorkstationTypeId; gap: number; perZone: number }[] = [
+  { typeId: "pallet-rack", gap: 3, perZone: 6 },
+  { typeId: "assembly-line", gap: 4, perZone: Infinity },
+  { typeId: "packing-table", gap: 3, perZone: 2 },
+  { typeId: "forklift", gap: 15, perZone: 4 },
+];
+
+// Fills the free space with sensibly spaced workstations, keeping the ones already placed.
+export function autoPlace(layout: FacilityLayout, existing: PlacedWorkstation[]): PlacedWorkstation[] {
+  const size = layoutSize(layout);
+  const tiles = layoutTiles(layout);
+  const zoneAt = (x: number, z: number) =>
+    tiles.find((tile) => tile.x === Math.floor(x / TILE) && tile.z === Math.floor(z / TILE))?.kind;
+  const placed = [...existing];
+
+  for (const plan of AUTO_PLAN) {
+    const type = workstationType(plan.typeId);
+    const perZone: Partial<Record<ZoneKind, number>> = {};
+    for (const item of placed) {
+      const zone = zoneAt(item.x, item.z);
+      if (item.typeId === type.id && zone) perZone[zone] = (perZone[zone] ?? 0) + 1;
+    }
+
+    const crowded = (placement: Placement) => {
+      const box = footprint(type, placement);
+      return placed.some((other) => {
+        const near = footprint(workstationType(other.typeId), other);
+        const gap = other.typeId === type.id ? plan.gap : 1;
+        return near.minX < box.maxX + gap && near.maxX > box.minX - gap && near.minZ < box.maxZ + gap && near.maxZ > box.minZ - gap;
+      });
+    };
+
+    for (const rotated of [false, true]) {
+      const length = rotated ? type.depth : type.length;
+      const depth = rotated ? type.length : type.depth;
+      for (let minZ = 0; minZ + depth <= size.depth; minZ++) {
+        for (let minX = 0; minX + length <= size.length; minX++) {
+          const placement = { x: minX + length / 2, z: minZ + depth / 2, rotated };
+          const zone = zoneAt(placement.x, placement.z);
+          if (!zone || (perZone[zone] ?? 0) >= plan.perZone) continue;
+          if (crowded(placement) || placementProblem(layout, type, placement, placed)) continue;
+          placed.push({ ...placement, typeId: type.id, id: crypto.randomUUID() });
+          perZone[zone] = (perZone[zone] ?? 0) + 1;
+        }
+      }
+    }
+  }
+  return placed;
+}
