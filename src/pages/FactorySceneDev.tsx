@@ -1,8 +1,10 @@
 import { useState } from "react";
 import FactoryScene from "@/components/project/review/factory/FactoryScene";
 import FactoryScene3D from "@/components/project/review/factory/FactoryScene3D";
+import HeadcountCard from "@/components/project/review/factory/HeadcountCard";
 import { factoryLayout } from "@/components/project/review/factory/layout";
 import PersonCard from "@/components/project/review/factory/PersonCard";
+import SuggestionsCard from "@/components/project/review/factory/SuggestionsCard";
 import VehicleCard from "@/components/project/review/factory/VehicleCard";
 
 // The mockup's scene, served from the handoff folder by the dev server.
@@ -43,6 +45,20 @@ export default function FactorySceneDev() {
           <FactoryScene {...scene} />
         )}
         {compare && <Tag>{view === "3D" ? "FactoryScene3D" : "FactoryScene (SVG)"}</Tag>}
+        <div className="absolute top-4 left-4">
+          <HeadcountCard layout={factoryLayout} />
+        </div>
+        <div className="absolute bottom-4 left-4">
+          <SuggestionsCard
+            suggestions={factoryLayout.suggestions}
+            // Until suggestions can be simulated, trying one shows who or what it is about.
+            onTry={({ target }) => {
+              if (!target) return;
+              setSelectedId(target);
+              setFollowing(view === "3D");
+            }}
+          />
+        </div>
         {(vehicle || person) && (
           <div className="absolute top-4 right-4">
             {/* Following moves the 3D camera; the SVG view has a fixed one. */}
@@ -96,7 +112,7 @@ export default function FactorySceneDev() {
 
 function Tag({ children }: { children: string }) {
   return (
-    <span className="absolute top-3 left-3 rounded-lg bg-white/95 px-2 py-1 text-[11px] font-bold text-slate-700 shadow">
+    <span className="absolute top-3 left-1/2 -translate-x-1/2 rounded-lg bg-white/95 px-2 py-1 text-[11px] font-bold text-slate-700 shadow">
       {children}
     </span>
   );
