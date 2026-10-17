@@ -53,6 +53,20 @@ export type ChargingForklift = Placed & { type: "chargingForklift"; at: UV };
 export type SceneObject = Conveyor | Rack | Table | PalletRow | ChargingForklift;
 
 export type Person = { id: string; name: string; role?: string; at: UV; vest: string; anim?: string };
+// What the profile card shows about a vehicle. Placeholders until the simulation computes them.
+export type VehicleProfile = {
+  hall: string;
+  driver: string;
+  capacity: string;
+  status: string;
+  job: string;
+  avgMoveMin: number;
+  utilisation: number;
+  costPerHour: number;
+  costNote: string;
+  // Shares of the shift so far, adding up to 1.
+  shift: { driving: number; lifting: number; waiting: number; idle: number };
+};
 export type Vehicle = {
   id: string;
   type: "forklift" | "palletJackWithWorker";
@@ -64,6 +78,7 @@ export type Vehicle = {
   task: string;
   sortAt?: UV;
   showRoute?: boolean;
+  profile?: VehicleProfile;
 };
 // The side of the hall something outside it stands on.
 export type HallSide = "-u" | "+u" | "-v" | "+v";
