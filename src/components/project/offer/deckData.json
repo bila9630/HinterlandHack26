@@ -1,0 +1,111 @@
+{
+  "customer": "Nordstern Mobility Systems GmbH (fictional)",
+  "project": "Sindelfingen Components Sequencing (synthetic example)",
+  "rfq": "RFQ-DEMO-2026-014",
+  "revision": "R00",
+  "proposal_date": "17 October 2026",
+  "location": "Sindelfingen, Germany (fictional scenario)",
+  "contact": "Mara Beispiel | Tender Manager | mara.beispiel@example.invalid | +49 711 555 0140",
+  "additional_contacts": "Operations lead | Jonas Muster | jonas.muster@example.invalid\nProject manager | Lea Demo | lea.demo@example.invalid",
+  "company_pitch": "We combine operational logistics experience with a defined implementation approach. For this synthetic case, the proposal focuses on stable JIS supply, phase-based capacity and clear customer-provider interfaces.",
+  "company_profile": "Automotive sequencing and production supply, integrated warehousing, internal transport and phased project implementation.",
+  "references": "Example Alpha | Inbound, storage and sequencing | 18,000 m² | 120 staff\nExample Beta | JIS supply and internal transport | 9,500 m² | 75 staff\nExample Gamma | Automotive parts distribution | 6,200 m² | 48 staff",
+  "sop": "1 January 2028",
+  "eop": "31 December 2032",
+  "award": "31 March 2027",
+  "mix_phase": "1 April 2028 to 30 June 2029",
+  "workdays": 240,
+  "shifts": "1 shift from 2028; 2 shifts from July 2030",
+  "service_scope": "Inbound receipt, storage, JIS sequencing and resequencing, empty-container handling, dispatch and internal transport to assembly halls.",
+  "site_summary": "H40 production site: 27,028 m² usable logistics area across two levels, including 3,757 m² high-bay storage. Optional external warehouse in Holzgerlingen: up to 15,000 m², subject to lease and availability. Route to assembly: 12 km, approximately 20 minutes.",
+  "flows": [
+    {
+      "Flow": "Vehicles before mix phase",
+      "Volume": 203,
+      "Unit": "vehicles / operating day",
+      "Phase": "Jan-Mar 2028"
+    },
+    {
+      "Flow": "Vehicles during mix phase",
+      "Volume": 257,
+      "Unit": "vehicles / operating day",
+      "Phase": "Apr 2028-Jun 2029"
+    },
+    {
+      "Flow": "Vehicles after mix, 1 shift",
+      "Volume": 212,
+      "Unit": "vehicles / operating day",
+      "Phase": "Jul 2029-Jun 2030"
+    },
+    {
+      "Flow": "Vehicles after mix, 2 shifts",
+      "Volume": 302,
+      "Unit": "vehicles / operating day",
+      "Phase": "Jul 2030-Dec 2032"
+    },
+    {
+      "Flow": "Sequenced parts during mix",
+      "Volume": 10808,
+      "Unit": "parts / operating day",
+      "Phase": "Apr 2028-Jun 2029"
+    },
+    {
+      "Flow": "Resequenced parts during mix",
+      "Volume": 2190,
+      "Unit": "parts / operating day",
+      "Phase": "Apr 2028-Jun 2029"
+    },
+    {
+      "Flow": "Goods receipt during mix",
+      "Volume": 617,
+      "Unit": "load units / operating day",
+      "Phase": "Apr 2028-Jun 2029"
+    }
+  ],
+  "process_steps": "1. Receive and unload supplier trucks\n2. Check, scan and book incoming parts\n3. Move parts to block or rack storage\n4. Pick parts to the sequencing zone\n5. Sequence or resequence to the production call\n6. Stage finished racks at the dispatch area\n7. Transport sequenced racks to assembly halls",
+  "assumptions": "Volumes and dates are synthetic planning values. Mix-phase volumes use the sample case. Parts without container dimensions or fill quantities are excluded from capacity sizing. The external warehouse option depends on confirmed availability. Customer supplies H40 and the high-bay rack. The service provider supplies the optional external building, handling equipment and transport trucks. Final scope requires customer approval.",
+  "resource_rows": [
+    {
+      "Role": "System and inventory control",
+      "H40": 1,
+      "External": 1,
+      "Basis": "per shift"
+    },
+    {
+      "Role": "Inbound/outbound forklift operators",
+      "H40": 2,
+      "External": 3,
+      "Basis": "workplaces per day"
+    },
+    {
+      "Role": "Warehouse forklift operators",
+      "H40": 6,
+      "External": 8,
+      "Basis": "workplaces per day"
+    },
+    {
+      "Role": "Sequencing operators",
+      "H40": 6,
+      "External": 7,
+      "Basis": "workplaces per day"
+    },
+    {
+      "Role": "Truck drivers",
+      "H40": 2,
+      "External": 3,
+      "Basis": "workplaces per day"
+    }
+  ],
+  "equipment": "Mix-phase indicative fleet: H40 has 3 x 4.0 t forklifts, 8 x 1.6 t forklifts and 3 transport trucks. The external site has 2 x 4.0 t forklifts, 7 x 1.6 t forklifts and 5 trucks, including 1 backup truck.",
+  "responsibilities": "Customer: H40 building, offices, existing high-bay rack, utilities, sprinkler system and JIS racks. Provider: external warehouse lease, supplementary storage equipment, forklifts, transport trucks, cleaning equipment, scanners and consumables. Shared: process approval, load-carrier master data, hazardous-goods documents and IT interfaces.",
+  "hr_training": "Recruitment starts four months before planned hiring. Roles include forklift operators, sequencing operators, drivers and system support. Training combines system access, safety, container handling, scanning, FIFO storage, picking and sequencing. Trainers qualify new staff in a training area before supervised practice in the live process. Completion requires a role checklist and a documented practical assessment.",
+  "implementation": "Award and project team mobilization | 31 Mar 2027\nProcess and layout approval | 30 Jun 2027\nExternal-site and equipment decision | 30 Sep 2027\nRecruitment and trainer onboarding | 1 Oct 2027\nSystems, equipment and site readiness | 15 Dec 2027\nTraining and operational rehearsal | 1-31 Dec 2027\nOperational start | 1 Jan 2028",
+  "quality_safety": "Daily shift handover reviews volume, service and safety exceptions. Weekly process walks review staging, housekeeping and open actions. Monthly customer reviews cover on-time delivery, inventory accuracy, damage rate and safety observations. Target values and escalation thresholds are agreed during detailed design. Employees complete site induction, equipment authorization and task-specific safety training before assignment.",
+  "certifications": "Applicable certifications, site scope and expiry dates to be confirmed by the quality team before proposal release. Synthetic example only: ISO 9001 quality management and ISO 14001 environmental management, subject to scope verification.",
+  "lean_approach": "Weekly shopfloor reviews, visible action tracking and structured root-cause reviews for recurring service or safety issues. Customer and provider agree the KPI definitions and improvement targets during implementation.",
+  "sustainability": "Proposed measures: reduce empty travel through route planning, consolidate internal trips, use reusable JIS racks, track energy use by operating area and review forklift charging schedules. Baselines and targets are agreed with the customer during implementation.",
+  "hr_policy": "Illustrative synthetic policies for this demo: role-based qualification records, annual refresher review, documented return-to-work conversation where applicable, and flexible staffing arrangements aligned with local agreements. Local HR and legal review is required before any client commitment.",
+  "contingency": "People: trained relief pool and cross-qualified team members. Equipment: one backup truck in the external-site example and service contracts for forklifts. IT: joint incident escalation and agreed paper-based continuity steps for essential dispatch records. Recovery roles and response times remain to be agreed.",
+  "conditions": "This synthetic concept assumes the customer validates the volume and container master. External warehouse capacity is subject to contract and availability. The indicative staffing counts are workstations per operating day and do not include gross headcount coverage. The customer confirms IT interfaces and JIS call timing. Final proposal is subject to internal commercial approval.",
+  "value": "One operating plan connects phase volumes to process design, resource plans and start-up activities. The proposed review cadence gives both teams a shared view of delivery and safety exceptions."
+}

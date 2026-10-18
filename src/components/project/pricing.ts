@@ -5,6 +5,8 @@ export const RFQ = {
   title: "just-in-sequence delivery, Sindelfingen hall H40",
   customer: "Schnellecke Modul GmbH",
   contractTerm: "2028 – 2032 (5 years)",
+  firstYear: 2028,
+  contractYears: 5,
   validUntil: "28.02.2027",
   vehiclesPerYear: 61_677,
   targetMargin: 0.07,
@@ -51,6 +53,37 @@ export const rampUpPlan = (month: number) => Math.min(0.2 + 0.1 * month, 1);
 export const annualRevenue = PRICE_SHEET.reduce((sum, item) => sum + item.perYear, 0);
 export const annualCost = COST_STEPS.reduce((sum, step) => sum + step.amount, 0);
 export const annualProfit = annualRevenue - annualCost;
+
+// Leasing, area and overheads run at full cost from day one; the rest scales with volume.
+export const FIXED_COST_SHARE = 0.25;
+// The highest margin we expect a customer to accept, from comparable tenders.
+export const MARKET_CEILING_MARGIN = 0.12;
+
+// Year one runs at the ramp-up plan's average volume, every later year at full volume.
+const firstYearVolume = Array.from({ length: 12 }, (_, month) => rampUpPlan(month)).reduce((a, b) => a + b, 0) / 12;
+
+export const PROJECT_YEARS = Array.from({ length: RFQ.contractYears }, (_, index) => {
+  const volume = index === 0 ? firstYearVolume : 1;
+  const revenue = annualRevenue * volume;
+  const cost = annualCost * (FIXED_COST_SHARE + (1 - FIXED_COST_SHARE) * volume);
+  return { year: RFQ.firstYear + index, volume, revenue, cost, profit: revenue - cost };
+});
+
+export const projectRevenue = PROJECT_YEARS.reduce((sum, year) => sum + year.revenue, 0);
+export const projectCost = PROJECT_YEARS.reduce((sum, year) => sum + year.cost, 0);
+export const projectMargin = (projectRevenue - projectCost) / projectRevenue;
+
+// Total price for the whole contract: the lowest offer breaks even, the highest is what the market still accepts.
+export const PRICE_RANGE = {
+  lowest: projectCost,
+  target: projectCost / (1 - RFQ.targetMargin),
+  offer: projectRevenue,
+  highest: projectCost / (1 - MARKET_CEILING_MARGIN),
+};
+
+// Revenue per service over the whole contract, following the yearly volume.
+const contractVolume = PROJECT_YEARS.reduce((sum, year) => sum + year.volume, 0);
+export const PROJECT_REVENUE_BY_SERVICE = PRICE_SHEET.map((item) => ({ name: item.name, revenue: item.perYear * contractVolume }));
 
 const euroFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const centsFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR", minimumFractionDigits: 2 });
