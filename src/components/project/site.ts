@@ -18,6 +18,7 @@ export function siteLayout(layout: FacilityLayout): FactoryLayout {
     objects: [...site.props],
     people: [],
     vehicles: [],
+    suggestions: [],
     exterior: site.exterior,
   };
 }
