@@ -219,8 +219,9 @@ export default function PeoplePage({ layout, workstations, staffing, onStaffingC
 
   return (
     <main className="relative flex flex-col bg-[#e0e7f3] lg:block lg:h-[calc(100vh-3rem)] lg:overflow-hidden">
-      <div className="relative order-2 h-[60vh] lg:absolute lg:inset-0 lg:right-[260px] lg:left-[240px] lg:h-auto">
+      <div className="relative order-2 h-[60vh] lg:absolute lg:inset-0 lg:h-auto">
         <LayoutScene
+          covered={{ left: 240, right: 260 }}
           layout={layout}
           showLabels={false}
           quiet
