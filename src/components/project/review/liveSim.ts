@@ -2,7 +2,7 @@ import { FacilityLayout } from "../layouts";
 import { RoleId, ROLES, Staffing } from "../people";
 import { processMetrics } from "../process/metrics";
 import { ProcessStep, Station, layoutStations, newStep, suggestedRoute } from "../process/model";
-import { PlacedWorkstation, autoPlace } from "../workstations";
+import { PlacedWorkstation, autoPlace, isStop } from "../workstations";
 import { floorPaths } from "./floorPaths";
 
 export const SHIFT_MINUTES = 8 * 60;
@@ -24,7 +24,7 @@ export function livePlan(
   processes: ProcessStep[][],
   staffing: Staffing,
 ) {
-  const placed = workstations.some((item) => item.typeId !== "forklift") ? workstations : autoPlace(layout, workstations);
+  const placed = workstations.some((item) => isStop(item.typeId)) ? workstations : autoPlace(layout, workstations);
   const stations = layoutStations(layout, placed);
   const own = processes.find(
     (steps) => steps.length >= 2 && steps.every((step) => stations.some((station) => station.id === step.stationId)),

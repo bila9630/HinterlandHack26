@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 import { Color, DoubleSide } from "three";
 import { DOCK_DEPTH, DOCK_WIDTH, TILE } from "./layouts";
-import { CONVEYOR_DEPTH, RACK_LEVELS, WorkstationType } from "./workstations";
+import { CONVEYOR_DEPTH, RACK_LEVELS, STAGING_PALLETS, WorkstationType } from "./workstations";
 import { BOX, PALLET } from "./review/factory/colors";
 import { CAMERA, Triple } from "./review/factory/iso";
 import { BoxSpec, boxGeometry, worldScale } from "./review/factory/three/geometry";
@@ -93,6 +93,17 @@ function modelBoxes(type: WorkstationType): BoxSpec[] {
     }
     case "packing-table":
       return objectBoxes({ type: "table", box: [-L / 2, -D / 2, L, D], height: 20 });
+    case "pallet-staging": {
+      // Loaded pallets in a row along its length, spaced like the factory scene's.
+      const [pallet, step] = [0.36, 0.45];
+      const row = (STAGING_PALLETS - 1) * step + pallet;
+      return objectBoxes({
+        type: "palletStaging",
+        at: [-row / 2, -pallet / 2],
+        step: [step, 0],
+        count: STAGING_PALLETS,
+      });
+    }
     case "forklift":
       return forkliftBoxes(false).map(({ at: [u, v, W, Dp], ...rest }) => ({
         ...rest,
