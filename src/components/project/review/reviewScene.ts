@@ -75,7 +75,8 @@ function equipment(item: PlacedWorkstation, grid: string[]): SceneObject[] {
         },
       ];
     case "assembly-line": {
-      // The conveyor runs along the back: -v, or -u when turned.
+      // The conveyor runs along the back: -v, or -u when turned. Boxes ride from the far end
+      // back towards the origin.
       const belt = cells(CONVEYOR_DEPTH);
       return [
         {
@@ -83,8 +84,8 @@ function equipment(item: PlacedWorkstation, grid: string[]): SceneObject[] {
           box: item.rotated ? [u0, v0, belt, D] : [u0, v0, W, belt],
           height: 24,
           beltPath: item.rotated
-            ? [[u0 + belt / 2, v0 + 0.1], [u0 + belt / 2, v1 - 0.1]]
-            : [[u0 + 0.1, v0 + belt / 2], [u1 - 0.1, v0 + belt / 2]],
+            ? [[u0 + belt / 2, v1 - 0.1], [u0 + belt / 2, v0 + 0.1]]
+            : [[u1 - 0.1, v0 + belt / 2], [u0 + 0.1, v0 + belt / 2]],
           beltZ: 24,
           items: 5,
           loopSec: 10,
