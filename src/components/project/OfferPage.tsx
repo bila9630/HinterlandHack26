@@ -204,13 +204,13 @@ export default function OfferPage() {
               </p>
             </div>
             <div className="flex gap-2 print:hidden">
-              <button
-                type="button"
-                onClick={() => window.print()}
+              <a
+                href={`${import.meta.env.BASE_URL}schnellecke_offer.pdf`}
+                download
                 className="cursor-pointer rounded-lg bg-[#eef1f8] px-4 py-2 text-[12px] font-semibold transition hover:bg-slate-200 focus:ring-4 focus:ring-blue-100 focus:outline-none"
               >
                 Download PDF
-              </button>
+              </a>
               <button
                 type="button"
                 onClick={() => setSent(true)}
