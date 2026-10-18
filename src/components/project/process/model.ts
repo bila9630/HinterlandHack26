@@ -1,9 +1,9 @@
 import { FacilityLayout, TILE, ZoneKind, layoutDocks, layoutTiles, layoutZones } from "../layouts";
-import { PlacedWorkstation, WorkstationTypeId, footprint, workstationType } from "../workstations";
+import { PlacedWorkstation, WorkstationTypeId, footprint, isStop, workstationType } from "../workstations";
 
 // Everything a pallet can stop at: the docks plus the placed workstations (forklifts
 // carry the pallet between stops, so they are not stops themselves).
-export type StationKind = "inbound-dock" | Exclude<WorkstationTypeId, "forklift"> | "outbound-dock";
+export type StationKind = "inbound-dock" | Exclude<WorkstationTypeId, "forklift" | "pallet-staging"> | "outbound-dock";
 
 type Box = { minX: number; maxX: number; minZ: number; maxZ: number };
 
@@ -59,7 +59,7 @@ export function layoutStations(layout: FacilityLayout, workstations: PlacedWorks
     };
   });
   const placed: Station[] = workstations
-    .filter((item) => item.typeId !== "forklift")
+    .filter((item) => isStop(item.typeId))
     .map((item) => ({
       id: item.id,
       kind: item.typeId as StationKind,

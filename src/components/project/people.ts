@@ -45,7 +45,7 @@ export type Staffing = {
 };
 
 export const DEFAULT_STAFFING: Staffing = {
-  counts: { inbound: 1, pallet: 1, assembly: 3, outbound: 1 },
+  counts: { inbound: 2, pallet: 1, assembly: 4, outbound: 1 },
   tariffs: { inbound: "E10", pallet: "E11", assembly: "E10", outbound: "E11" },
   sickDays: 10,
   vacationDays: 20,

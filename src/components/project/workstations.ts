@@ -1,6 +1,7 @@
 import {
   DOCK_DEPTH,
   DOCK_WIDTH,
+  DockKind,
   FacilityLayout,
   TILE,
   ZONE_LABELS,
@@ -10,7 +11,7 @@ import {
   layoutTiles,
 } from "./layouts";
 
-export type WorkstationTypeId = "pallet-rack" | "assembly-line" | "packing-table" | "forklift";
+export type WorkstationTypeId = "pallet-rack" | "assembly-line" | "packing-table" | "pallet-staging" | "forklift";
 
 export type WorkstationType = {
   id: WorkstationTypeId;
@@ -31,6 +32,7 @@ export const ASSEMBLY_STATIONS = 3;
 const ASSEMBLY_LENGTH = 42;
 // The assembly line's conveyor runs along its back; its operators stand in front of it.
 export const CONVEYOR_DEPTH = 4;
+export const STAGING_PALLETS = 3;
 
 export const WORKSTATION_TYPES: WorkstationType[] = [
   {
@@ -71,6 +73,18 @@ export const WORKSTATION_TYPES: WorkstationType[] = [
     tone: { bg: "#fdf0e2", fg: "#d0782a" },
   },
   {
+    id: "pallet-staging",
+    name: "Pallet staging",
+    fits: ["inbound", "outbound", "production"],
+    length: 13,
+    depth: 4,
+    specs: [
+      { label: "Size", value: "13 × 4 m" },
+      { label: "Pallet places", value: String(STAGING_PALLETS) },
+    ],
+    tone: { bg: "#f6eee2", fg: "#a8763c" },
+  },
+  {
     id: "forklift",
     name: "Forklift",
     fits: ["lane"],
@@ -87,6 +101,10 @@ export const WORKSTATION_TYPES: WorkstationType[] = [
 export function workstationType(id: WorkstationTypeId) {
   return WORKSTATION_TYPES.find((type) => type.id === id)!;
 }
+
+// Whether pallets stop at a workstation as a step of the process. Forklifts carry them
+// between stops and staging areas hold them, so neither is a stop of its own.
+export const isStop = (id: WorkstationTypeId) => id !== "forklift" && id !== "pallet-staging";
 
 export function fitsLabel(type: WorkstationType) {
   return type.fits.map((kind) => (kind === "lane" ? "Forklift lanes" : ZONE_LABELS[kind])).join(" · ");
@@ -205,54 +223,83 @@ function spread(start: number, span: number, size: number, n: number) {
   return Array.from({ length: n }, (_, index) => start + gap * (index + 1) + size * (index + 0.5));
 }
 
-// A footprint laid out in a grid: length runs along the row, depth across it.
-type Unit = { length: number; depth: number; gapAlong: number; gapAcross: number };
+type Side = "+z" | "+x" | "-z" | "-x";
+// Preferred first on a tie: a front towards +z or +x is where the models face.
+const SIDES: Side[] = ["+z", "+x", "-z", "-x"];
 
-// Centres for up to `count` units in rows across the region, as many per row as fit and
-// the rows spread evenly. rotated runs the rows along z. Prefers the orientation that
-// fits the most units, then the one with more units per row.
-function gridCentres(region: Region, unit: Unit, count: number) {
-  const options = [false, true].map((rotated) => {
-    const spanAlong = rotated ? region.depth : region.length;
-    const spanAcross = rotated ? region.length : region.depth;
-    const perRow = Math.min(fitCount(spanAlong, unit.length, unit.gapAlong), count);
-    const rows = perRow && Math.min(fitCount(spanAcross, unit.depth, unit.gapAcross), Math.ceil(count / perRow));
-    const alongs = spread(rotated ? region.minZ : region.minX, spanAlong, unit.length, perRow);
-    const acrosses = spread(rotated ? region.minX : region.minZ, spanAcross, unit.depth, rows);
-    const centres = acrosses
-      .flatMap((across) => alongs.map((along) => (rotated ? { x: across, z: along } : { x: along, z: across })))
-      .slice(0, count);
-    return { rotated, perRow, centres };
-  });
-  return options.reduce((best, option) =>
-    option.centres.length > best.centres.length ||
-    (option.centres.length === best.centres.length && option.perRow > best.perRow)
-      ? option
-      : best,
-  );
+// The side of a region that borders the most lane squares: its aisle.
+function aisleSide(layout: FacilityLayout, region: Region): Side {
+  const lanes = new Set(layoutTiles(layout).filter((tile) => tile.kind === "lane").map((tile) => `${tile.x},${tile.z}`));
+  const [x0, z0] = [region.minX / TILE, region.minZ / TILE];
+  const [x1, z1] = [x0 + region.length / TILE, z0 + region.depth / TILE];
+  const count = (side: Side) => {
+    let lane = 0;
+    if (side === "+z" || side === "-z") {
+      for (let x = x0; x < x1; x++) lane += Number(lanes.has(`${x},${side === "+z" ? z1 : z0 - 1}`));
+    } else {
+      for (let z = z0; z < z1; z++) lane += Number(lanes.has(`${side === "+x" ? x1 : x0 - 1},${z}`));
+    }
+    return lane;
+  };
+  return SIDES.reduce((best, side) => (count(side) > count(best) ? side : best));
 }
 
-// Pallet racks per warehouse area and assembly lines per production area.
-const RACKS_PER_ZONE = 6;
-const LINES_PER_ZONE = 2;
-// Packing tables at a dock stand right behind the door, which is this far from the wall.
-const DOCK_CLEARANCE = DOCK_DEPTH;
+// A region as seen from its aisle: `along` runs beside the aisle and `inward` is the
+// distance from it. Workstations placed with `at` run along the aisle, their front
+// (+z, or +x when turned) towards it when the aisle is on +z or +x.
+function aisleFrame(region: Region, side: Side) {
+  const alongZ = side === "+x" || side === "-x";
+  const edge = {
+    "+z": region.minZ + region.depth,
+    "-z": region.minZ,
+    "+x": region.minX + region.length,
+    "-x": region.minX,
+  }[side];
+  const sign = side[0] === "+" ? -1 : 1;
+  return {
+    alongMin: alongZ ? region.minZ : region.minX,
+    alongLength: alongZ ? region.depth : region.length,
+    depth: alongZ ? region.length : region.depth,
+    at: (along: number, inward: number): Placement => {
+      const across = edge + sign * inward;
+      return alongZ ? { x: across, z: along, rotated: true } : { x: along, z: across, rotated: false };
+    },
+  };
+}
 
-// Plans a tidy floor: racks in evenly spaced rows, assembly lines with a packing table
-// at their end, a packing table behind each dock door and forklifts spread over the
-// lanes. Workstations already placed are kept; planned ones that would clash with them
-// are left out.
+// FloorGenie lays the floor out the way the factory scene does, in metres. Production:
+// one assembly line centred along the aisle with its operators towards it, and between
+// them and the aisle a packing table near the line's start with pallets staged beside it.
+const LINE_SETBACK = 9;
+const TABLE_INWARD = 3.5;
+const TABLE_START = 7.5;
+const STAGING_START = 19;
+// Warehouse: rows of racks along the aisle, the first this far from it, then one every
+// RACK_PITCH (a rack and a forklift aisle), keeping RACK_SETBACK clear at the far side.
+const RACK_SETBACK = 4;
+const RACK_PITCH = 15;
+const RACK_GAP = 2;
+// Docks: pallets staged along the wall in line with the first door, this far in from the
+// wall (or nearer where the dock area is shallow); and a forklift on the aisle beside each dock area.
+const STAGING_SETBACK: Record<DockKind, number> = { inbound: 11.5, outbound: 3 };
+const NEAR_STAGING_SETBACK = 3;
+
+// Plans a floor like the factory scene: an assembly line with its packing table and
+// staged pallets in production, rows of racks in the warehouse, staged pallets behind
+// the dock doors and a forklift on the aisle of each dock area. Workstations already
+// placed are kept; planned ones that would clash with them are left out.
 export function autoPlace(layout: FacilityLayout, existing: PlacedWorkstation[]): PlacedWorkstation[] {
   const size = layoutSize(layout);
-  const regions = zoneRegions(layout);
+  const regions = zoneRegions(layout).map((region) => ({ ...region, frame: aisleFrame(region, aisleSide(layout, region)) }));
   const placed = [...existing];
 
-  function tryPlace(typeId: WorkstationTypeId, candidates: Placement[]) {
+  // Places the workstation at the first of the spots where it fits.
+  function tryPlace(typeId: WorkstationTypeId, ...spots: Placement[]) {
     const type = workstationType(typeId);
-    for (const candidate of candidates) {
-      const placement = snapPlacement(layout, type, candidate);
-      if (placementProblem(layout, type, placement, placed)) continue;
-      placed.push({ ...placement, typeId, id: crypto.randomUUID() });
+    for (const spot of spots) {
+      const snapped = snapPlacement(layout, type, spot);
+      if (placementProblem(layout, type, snapped, placed)) continue;
+      placed.push({ ...snapped, typeId, id: crypto.randomUUID() });
       return true;
     }
     return false;
@@ -260,92 +307,46 @@ export function autoPlace(layout: FacilityLayout, existing: PlacedWorkstation[])
 
   const line = workstationType("assembly-line");
   const table = workstationType("packing-table");
+  const staging = workstationType("pallet-staging");
   const rack = workstationType("pallet-rack");
 
-  // Assembly lines, each with a packing table running the same way at its end: straight
-  // after the line (which may then reach the zone edges), or beside its last stretch
-  // when the zone is too short for that.
-  for (const region of regions.filter((item) => item.kind === "production")) {
-    const besideDepth = line.depth + 1 + table.depth;
-    // The line's conveyor runs along its back (-z, or -x when turned).
-    const conveyorAcross = -line.depth / 2 + CONVEYOR_DEPTH / 2;
-    const options = [
-      {
-        unit: { length: line.length + 1 + table.length, depth: line.depth, gapAlong: 0, gapAcross: 3 },
-        lineAcross: 0,
-        tableAcross: conveyorAcross,
-      },
-      {
-        unit: { length: line.length + 3, depth: besideDepth, gapAlong: 2, gapAcross: 3 },
-        lineAcross: (line.depth - besideDepth) / 2,
-        tableAcross: (besideDepth - table.depth) / 2,
-      },
-    ].map((option) => ({ ...option, grid: gridCentres(region, option.unit, LINES_PER_ZONE) }));
-    const best = options.reduce((a, b) => (b.grid.centres.length > a.grid.centres.length ? b : a));
-    const { rotated } = best.grid;
-    for (const unitCentre of best.grid.centres) {
-      // Line and table both snap to the 1 m grid; starting from a half metre lets them
-      // snap without shifting, so the table stays in line with the conveyor.
-      const half = (value: number) => Math.round(value - 0.5) + 0.5;
-      const centre = rotated ? { ...unitCentre, x: half(unitCentre.x) } : { ...unitCentre, z: half(unitCentre.z) };
-      const start = (rotated ? centre.z : centre.x) - best.unit.length / 2;
-      const at = (along: number, across: number) =>
-        rotated ? { x: centre.x + across, z: along, rotated } : { x: along, z: centre.z + across, rotated };
-      if (tryPlace("assembly-line", [at(start + line.length / 2, best.lineAcross)])) {
-        tryPlace("packing-table", [at(start + best.unit.length - table.length / 2, best.tableAcross)]);
+  for (const { kind, frame } of regions) {
+    if (kind !== "production") continue;
+    const start = frame.alongMin + (frame.alongLength - line.length) / 2;
+    // A zone too shallow for the table in front gets only the line, across its middle.
+    const roomy = frame.depth >= LINE_SETBACK + line.depth;
+    const inward = roomy ? LINE_SETBACK + line.depth / 2 : frame.depth / 2;
+    if (!tryPlace("assembly-line", frame.at(start + line.length / 2, inward)) || !roomy) continue;
+    tryPlace("packing-table", frame.at(start + TABLE_START + table.length / 2, TABLE_INWARD));
+    tryPlace("pallet-staging", frame.at(start + STAGING_START + staging.length / 2, TABLE_INWARD));
+  }
+
+  for (const dock of layoutDocks(layout)) {
+    const door = dock.doors[0];
+    const inward = door.rotated ? (door.x < size.length / 2 ? 1 : -1) : door.z < size.depth / 2 ? 1 : -1;
+    const wall = inward > 0 ? 0 : door.rotated ? size.length : size.depth;
+    const spot = (setback: number): Placement => {
+      const across = wall + inward * (setback + staging.depth / 2);
+      return door.rotated ? { x: across, z: door.z, rotated: true } : { x: door.x, z: across, rotated: false };
+    };
+    tryPlace("pallet-staging", spot(STAGING_SETBACK[dock.kind]), spot(NEAR_STAGING_SETBACK));
+  }
+
+  for (const { kind, frame } of regions) {
+    if (kind !== "warehouse") continue;
+    const perRow = fitCount(frame.alongLength, rack.length, RACK_GAP);
+    for (let inward = RACK_SETBACK; inward + rack.depth + RACK_SETBACK <= frame.depth; inward += RACK_PITCH) {
+      for (const along of spread(frame.alongMin, frame.alongLength, rack.length, perRow)) {
+        tryPlace("pallet-rack", frame.at(along, inward + rack.depth / 2));
       }
     }
   }
 
-  // A packing table behind each dock door, all square to the wall or else all along it.
-  for (const dock of layoutDocks(layout)) {
-    const at = (door: (typeof dock.doors)[number], along: boolean) => {
-      const depth = along ? table.depth : table.length;
-      const inward = door.rotated ? (door.x < size.length / 2 ? 1 : -1) : door.z < size.depth / 2 ? 1 : -1;
-      const wall = inward > 0 ? 0 : door.rotated ? size.length : size.depth;
-      const offset = wall + inward * (DOCK_CLEARANCE + depth / 2);
-      const rotated = along === door.rotated;
-      return door.rotated ? { x: offset, z: door.z, rotated } : { x: door.x, z: offset, rotated };
-    };
-    const before = placed.length;
-    if (dock.doors.every((door) => tryPlace("packing-table", [at(door, false)]))) continue;
-    placed.length = before;
-    for (const door of dock.doors) tryPlace("packing-table", [at(door, true)]);
-  }
-
-  // Pallet racks in rows with aisles between them.
-  for (const region of regions.filter((item) => item.kind === "warehouse")) {
-    const unit = { length: rack.length, depth: rack.depth, gapAlong: 2, gapAcross: 3 };
-    const grid = gridCentres(region, unit, RACKS_PER_ZONE);
-    for (const centre of grid.centres) tryPlace("pallet-rack", [{ ...centre, rotated: grid.rotated }]);
-  }
-
-  // Forklifts spread over the lanes: the first on the busiest crossing, each next one on
-  // the lane square farthest from the others. Squares along the outer wall are avoided.
-  const columns = size.length / TILE;
-  const rows = size.depth / TILE;
-  const lanes = layoutTiles(layout).filter((tile) => tile.kind === "lane");
-  const isLane = (x: number, z: number) => lanes.some((tile) => tile.x === x && tile.z === z);
-  const inner = lanes.filter((tile) => tile.x > 0 && tile.z > 0 && tile.x < columns - 1 && tile.z < rows - 1);
-  const pool = inner.length > 0 ? inner : lanes;
-  const links = (tile: { x: number; z: number }) => ({
-    x: Number(isLane(tile.x - 1, tile.z)) + Number(isLane(tile.x + 1, tile.z)),
-    z: Number(isLane(tile.x, tile.z - 1)) + Number(isLane(tile.x, tile.z + 1)),
-  });
-  const forklifts = Math.min(Math.max(Math.round(lanes.length / 5), 2), 4, pool.length);
-  const chosen: typeof lanes = [];
-  while (chosen.length < forklifts) {
-    const score = (tile: (typeof lanes)[number]) =>
-      chosen.length === 0
-        ? links(tile).x + links(tile).z
-        : Math.min(...chosen.map((other) => Math.hypot(other.x - tile.x, other.z - tile.z)));
-    const next = pool
-      .filter((tile) => !chosen.includes(tile))
-      .reduce((best, tile) => (score(tile) > score(best) ? tile : best));
-    chosen.push(next);
-    // Face the forklift along the lane.
-    const { x, z } = links(next);
-    tryPlace("forklift", [{ x: (next.x + 0.5) * TILE, z: (next.z + 0.5) * TILE, rotated: z > x }]);
+  // The forklift stands in the middle of the lane square beside the dock area's centre.
+  for (const { kind, frame } of regions) {
+    if (kind !== "inbound" && kind !== "outbound") continue;
+    const along = (Math.floor((frame.alongMin + frame.alongLength / 2) / TILE) + 0.5) * TILE;
+    tryPlace("forklift", frame.at(along, -TILE / 2));
   }
 
   return placed;

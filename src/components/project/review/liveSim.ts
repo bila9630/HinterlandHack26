@@ -1,20 +1,16 @@
-import { FacilityLayout } from "../layouts";
-import { RoleId, ROLES, Staffing } from "../people";
+import { FacilityLayout, ZoneKind } from "../layouts";
+import { ROLES, Staffing } from "../people";
 import { processMetrics } from "../process/metrics";
 import { ProcessStep, Station, layoutStations, newStep, suggestedRoute } from "../process/model";
-import { PlacedWorkstation, autoPlace } from "../workstations";
-import { floorPaths } from "./floorPaths";
+import { PlacedWorkstation, autoPlace, isStop } from "../workstations";
+import { forkliftPaths } from "./floorPaths";
 
-export const SHIFT_MINUTES = 8 * 60;
 // Pallets are released a little slower than the bottleneck takes them, so no queue builds up.
-const BOTTLENECK_LOAD = 0.97;
+export const BOTTLENECK_LOAD = 0.97;
 const MAX_CREW = 6;
 
-// Where one pallet is: handled at a step, or on the leg towards a step (fraction 0–1).
-export type LivePallet = { id: number; at: "step" | "leg"; index: number; fraction: number };
-
-// A stop on the route and how many people work there.
-export type LiveStop = { station: Station; crew: number };
+// A stop on the route: the step done there, how many people work there, and how busy it is (0–1).
+export type LiveStop = { station: Station; step: ProcessStep; crew: number; utilisation: number };
 
 // The process the simulation runs: the user's own when one is complete, otherwise the
 // suggested route with every station's usual task. Without placed workstations the floor is auto-planned.
@@ -24,7 +20,7 @@ export function livePlan(
   processes: ProcessStep[][],
   staffing: Staffing,
 ) {
-  const placed = workstations.some((item) => item.typeId !== "forklift") ? workstations : autoPlace(layout, workstations);
+  const placed = workstations.some((item) => isStop(item.typeId)) ? workstations : autoPlace(layout, workstations);
   const stations = layoutStations(layout, placed);
   const own = processes.find(
     (steps) => steps.length >= 2 && steps.every((step) => stations.some((station) => station.id === step.stationId)),
@@ -34,42 +30,30 @@ export function livePlan(
   const forklifts = placed.filter((item) => item.typeId === "forklift").length;
   const metrics = processMetrics(steps, route, forklifts);
 
-  // The People step staffs each zone; stops in the same zone share its people.
-  const stops: LiveStop[] = route.map((station) => {
-    const role = ROLES.find((item) => item.zone === station.zone);
-    const sharing = route.filter((item) => item.zone === station.zone).length;
-    const staffed = role ? staffing.counts[role.id as RoleId] : steps[route.indexOf(station)].operators;
-    return { station, crew: Math.min(Math.round(staffed / sharing), MAX_CREW) };
+  // The People step staffs each zone. Its people go to the zone's stops in route order, as
+  // many as each step needs, and any left over are shared out among those stops.
+  const left = new Map<ZoneKind, number>(ROLES.map((role) => [role.zone, staffing.counts[role.id]]));
+  const crews = route.map((station, index) => {
+    const staffed = left.get(station.zone);
+    if (staffed === undefined) return steps[index].operators;
+    const crew = Math.min(steps[index].operators, staffed);
+    left.set(station.zone, staffed - crew);
+    return crew;
   });
-
-  const interval = Math.max(...metrics.times, 0.1) / BOTTLENECK_LOAD;
-  const segments = metrics.times.flatMap((minutes, index) => {
-    const leg = metrics.legs[index];
-    return [
-      ...(leg ? [{ at: "leg" as const, index, minutes: leg.minutes }] : []),
-      { at: "step" as const, index, minutes },
-    ];
-  });
-  const cycle = segments.reduce((sum, segment) => sum + segment.minutes, 0);
-
-  function palletsAt(time: number): LivePallet[] {
-    const latest = Math.floor(time / interval);
-    const pallets: LivePallet[] = [];
-    for (let id = Math.max(0, latest - Math.ceil(cycle / interval)); id <= latest; id++) {
-      let local = time - id * interval;
-      if (local < 0 || local >= cycle) continue;
-      for (const segment of segments) {
-        if (local < segment.minutes) {
-          pallets.push({ id, at: segment.at, index: segment.index, fraction: local / segment.minutes });
-          break;
-        }
-        local -= segment.minutes;
-      }
-    }
-    return pallets;
+  for (const [zone, count] of left) {
+    const inZone = route.flatMap((station, index) => (station.zone === zone ? [index] : []));
+    for (let k = 0; k < count && inZone.length > 0; k++) crews[inZone[k % inZone.length]]++;
   }
 
-  return { placed, stops, paths: floorPaths(layout, placed, stops), palletsAt };
+  const slowest = Math.max(...metrics.times, 0.1);
+  const stops: LiveStop[] = route.map((station, index) => ({
+    station,
+    step: steps[index],
+    crew: Math.min(crews[index], MAX_CREW),
+    utilisation: (metrics.times[index] / slowest) * BOTTLENECK_LOAD,
+  }));
+
+  return { placed, stops, forklifts: forkliftPaths(layout, placed, route), metrics, staffing };
 }
 
 export type LivePlan = ReturnType<typeof livePlan>;

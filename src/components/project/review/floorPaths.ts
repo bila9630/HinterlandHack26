@@ -5,20 +5,15 @@ import { PlacedWorkstation, footprint, workstationType } from "../workstations";
 type Vec = { x: number; z: number };
 type Box = { minX: number; maxX: number; minZ: number; maxZ: number };
 
-// A straight stretch of floor a worker walks back and forth, in metres. Goods are
-// carried on the way from `from` to `to` and the walk back is empty.
-export type FloorPath = { from: Vec; to: Vec };
-
 // A forklift waits loaded at home, drives along its lane to the turn, turns and drives
 // forks first to the drop beside a station's workers, sets the pallet down and backs
 // out the same way. A forklift with nowhere to go stays at home, the way it was placed.
-export type ForkliftRoute = { home: Vec; turn: Vec; drop: Vec; rotated: boolean };
+// `station` is the station it serves, if any.
+export type ForkliftRoute = { home: Vec; turn: Vec; drop: Vec; rotated: boolean; station: string | null };
 
-// Workers are drawn larger than life; this is the floor they take up around their path.
+// The floor a worker takes up, which forks stop short of.
 const WORKER_RADIUS = 1.3;
-const WORK_PATH = 4;
-const DOCK_PATH = 5;
-// Space kept between a worker and a workstation, wall or another worker.
+// Space kept between a forklift and a workstation, wall or another forklift.
 const CLEARANCE = 0.4;
 // Half the forklift's length with a pallet on its forks, and half its width.
 const FORKLIFT_REACH = workstationType("forklift").length / 2;
@@ -29,10 +24,6 @@ const DROP_NEAR = 6;
 const LANE_DRIVE = 25;
 // Choosing the far side of a workstation counts as this many metres further away.
 const FAR_SIDE = 8;
-// Where room is short, workers walk half as far or stand still; standing still counts
-// as this many metres further away.
-const WALKS = [1, 0.5, 0];
-const SHORT_WALK = 4;
 
 const overlaps = (a: Box, b: Box) => a.minX < b.maxX && a.maxX > b.minX && a.minZ < b.maxZ && a.maxZ > b.minZ;
 const grow = (box: Box, byX: number, byZ = byX): Box => ({
@@ -173,7 +164,13 @@ function forkliftRoutes(
 ) {
   const homes = forklifts.map((item) => grow(segmentBox(item, item), FORKLIFT_REACH));
   const taken: { forklift: number; box: Box }[] = homes.map((box, forklift) => ({ forklift, box }));
-  const routes: ForkliftRoute[] = forklifts.map((item) => ({ home: item, turn: item, drop: item, rotated: item.rotated }));
+  const routes: ForkliftRoute[] = forklifts.map((item) => ({
+    home: item,
+    turn: item,
+    drop: item,
+    rotated: item.rotated,
+    station: null,
+  }));
   const served = new Set<string>();
   const busy = new Set<number>();
   const legs = forklifts
@@ -196,78 +193,21 @@ function forkliftRoutes(
       if (leg.station) served.add(leg.station);
       leg.boxes.forEach((box) => taken.push({ forklift: leg.forklift, box }));
       const item = forklifts[leg.forklift];
-      routes[leg.forklift] = { home: { x: item.x, z: item.z }, turn: leg.turn, drop: leg.drop, rotated: item.rotated };
+      routes[leg.forklift] = {
+        home: { x: item.x, z: item.z },
+        turn: leg.turn,
+        drop: leg.drop,
+        rotated: item.rotated,
+        station: leg.station,
+      };
     }
   }
-  return { routes, taken: taken.map((item) => item.box) };
+  return routes;
 }
 
-type Candidate = FloorPath & { centre: Vec; penalty: number };
-
-// Places to work at a workstation: short walks along either long side, a little away from it.
-function stationCandidates(station: Station): { candidates: Candidate[]; ideals: (n: number) => Vec[] } {
-  const { along: [alongMin, alongMax], sides, point } = stationFront(station);
-  const candidates: Candidate[] = [];
-  for (const side of sides) {
-    for (const walk of WALKS) {
-      const span = WORK_PATH * walk;
-      for (let along = alongMin - 2; along <= alongMax + 2 - span; along += 1) {
-        candidates.push({
-          from: point(along, side.across),
-          to: point(along + span, side.across),
-          centre: point(along + span / 2, side.across),
-          penalty: side.penalty + SHORT_WALK * (1 - walk),
-        });
-      }
-    }
-  }
-  // Workers spread evenly along the front.
-  const ideals = (n: number) =>
-    Array.from({ length: n }, (_, i) => point(alongMin + ((alongMax - alongMin) * (i + 0.5)) / n, sides[0].across));
-  return { candidates, ideals };
-}
-
-// Places to work at a dock: walks from the doors into the hall, beside whatever stands behind the doors.
-function dockCandidates(station: Station, layout: FacilityLayout) {
-  const size = layoutSize(layout);
-  const dock = layoutDocks(layout).find((item) => `${item.kind}-dock` === station.kind);
-  if (!dock) return { candidates: [], ideals: () => [] };
-  const alongZ = dock.doors[0].rotated;
-  const wall = alongZ ? dock.doors[0].x : dock.doors[0].z;
-  const inward = wall < (alongZ ? size.length : size.depth) / 2 ? 1 : -1;
-  const doorAt = dock.doors.map((door) => (alongZ ? door.z : door.x));
-  const point = (along: number, depth: number) => {
-    const across = wall + inward * depth;
-    return alongZ ? { x: across, z: along } : { x: along, z: across };
-  };
-  // Inbound carries goods from the door into the hall, outbound the other way.
-  const inbound = station.kind === "inbound-dock";
-  const near = DOCK_DEPTH + WORKER_RADIUS + CLEARANCE + 0.5;
-  const candidates: Candidate[] = [];
-  for (let along = Math.min(...doorAt) - 12; along <= Math.max(...doorAt) + 12; along += 1) {
-    for (const walk of WALKS) {
-      const [door, hall] = [point(along, near), point(along, near + DOCK_PATH * walk)];
-      candidates.push({
-        from: inbound ? door : hall,
-        to: inbound ? hall : door,
-        centre: point(along, near + (DOCK_PATH * walk) / 2),
-        penalty: SHORT_WALK * (1 - walk),
-      });
-    }
-  }
-  const ideals = (n: number) => Array.from({ length: n }, (_, i) => point(doorAt[i % doorAt.length], near + DOCK_PATH / 2));
-  return { candidates, ideals };
-}
-
-// Where everything that moves on the review floor goes: a route for each forklift and
-// a short walk for each worker, chosen so none of them runs into a workstation, a dock
-// door, a forklift or another worker.
-export function floorPaths(
-  layout: FacilityLayout,
-  placed: PlacedWorkstation[],
-  stops: { station: Station; crew: number }[],
-) {
-  const size = layoutSize(layout);
+// Where the forklifts go: a route for each, chosen so that none of them runs into a
+// workstation, a dock door or another forklift.
+export function forkliftPaths(layout: FacilityLayout, placed: PlacedWorkstation[], stations: Station[]) {
   const blocked: Box[] = [
     ...placed
       .filter((item) => item.typeId !== "forklift")
@@ -279,48 +219,6 @@ export function floorPaths(
       }),
     ),
   ].map((box) => grow(box, CLEARANCE));
-
-  const stations = stops
-    .map((stop) => stop.station)
-    .filter((station, index, all) => all.findIndex((other) => other.id === station.id) === index);
-  const { routes, taken } = forkliftRoutes(
-    layout,
-    placed.filter((item) => item.typeId === "forklift"),
-    stations,
-    blocked,
-  );
-  blocked.push(...taken.map((box) => grow(box, CLEARANCE)));
-
-  // Workers keep off the forklift lanes when there is room elsewhere.
-  const lanes: Box[] = layoutTiles(layout)
-    .filter((tile) => tile.kind === "lane")
-    .map((tile) => ({ minX: tile.x * TILE, maxX: (tile.x + 1) * TILE, minZ: tile.z * TILE, maxZ: (tile.z + 1) * TILE }));
-
-  function fits(path: FloorPath, onLanes: boolean) {
-    const box = grow(segmentBox(path.from, path.to), WORKER_RADIUS);
-    if (box.minX < CLEARANCE || box.minZ < CLEARANCE) return false;
-    if (box.maxX > size.length - CLEARANCE || box.maxZ > size.depth - CLEARANCE) return false;
-    if (blocked.some((other) => overlaps(box, other))) return false;
-    return onLanes || !lanes.some((lane) => overlaps(box, lane));
-  }
-
-  const crews = stops.map(({ station, crew }) => {
-    const { candidates, ideals } = isDock(station) ? dockCandidates(station, layout) : stationCandidates(station);
-    const walks: FloorPath[] = [];
-    for (const ideal of ideals(crew)) {
-      const score = (candidate: Candidate) => distance(candidate.centre, ideal) + candidate.penalty;
-      const pick = (onLanes: boolean) =>
-        candidates
-          .filter((candidate) => fits(candidate, onLanes))
-          .reduce<Candidate | null>((best, candidate) => (!best || score(candidate) < score(best) ? candidate : best), null);
-      const chosen = pick(false) ?? pick(true);
-      if (!chosen) continue;
-      const walk = { from: chosen.from, to: chosen.to };
-      walks.push(walk);
-      blocked.push(grow(segmentBox(walk.from, walk.to), WORKER_RADIUS + CLEARANCE));
-    }
-    return walks;
-  });
-
-  return { forklifts: routes, crews };
+  const unique = stations.filter((station, index, all) => all.findIndex((other) => other.id === station.id) === index);
+  return forkliftRoutes(layout, placed.filter((item) => item.typeId === "forklift"), unique, blocked);
 }

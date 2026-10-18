@@ -20,7 +20,7 @@ import {
   YELLOW,
 } from "../colors";
 import { Triple } from "../iso";
-import { Dock, FactoryLayout, PalletRow, Rect, SceneObject, Truck, UV, ZoneName } from "../layout";
+import { Dock, FactoryLayout, HallSide, PalletRow, Rect, SceneObject, Truck, UV, zoneAt } from "../layout";
 import { BoxSpec, Quad, lineQuads, rectQuad } from "./geometry";
 
 // Box models ported from generate_scene.py, in floor cells and mockup px.
@@ -66,19 +66,26 @@ export function jackBoxes(loaded: boolean): BoxSpec[] {
 
 export const CONVEYOR_ITEM: BoxSpec[] = [{ at: [-0.13, -0.13, 0.26, 0.26], h: 14, c: BOX }];
 
+// A rack along u; one deeper than it is long runs along v, its boxes laid out the same way.
 function rackBoxes({ origin: [u0, v0], size: [W, D], levels, height, uprights }: Extract<SceneObject, { type: "rack" }>) {
-  const boxes: BoxSpec[] = levels.map((z) => ({ at: [u0, v0, W, D], z: z + 2, h: 4, c: BEAM }));
+  const alongV = D > W;
+  const [length, depth] = alongV ? [D, W] : [W, D];
+  // Built along u from (0, 0), then placed.
+  const boxes: BoxSpec[] = levels.map((z) => ({ at: [0, 0, length, depth], z: z + 2, h: 4, c: BEAM }));
   for (const z of levels.slice(0, -1)) {
-    for (let u = u0 + 0.06; u + 0.6 <= u0 + W - 0.05; u += 0.62) boxes.push({ at: [u + 0.03, v0 + 0.04, 0.56, D - 0.08], z: z + 6, h: 24, c: BOX });
+    for (let u = 0.06; u + 0.6 <= length - 0.05; u += 0.62) boxes.push({ at: [u + 0.03, 0.04, 0.56, depth - 0.08], z: z + 6, h: 24, c: BOX });
   }
   const top = levels[levels.length - 1] + 6;
-  boxes.push({ at: [u0 + 0.06, v0 + 0.04, 0.56, D - 0.08], z: top, h: 24, c: BOX });
-  boxes.push({ at: [u0 + 0.7, v0 + 0.04, 0.56, D - 0.08], z: top, h: 24, c: WRAP });
+  boxes.push({ at: [0.06, 0.04, 0.56, depth - 0.08], z: top, h: 24, c: BOX });
+  boxes.push({ at: [0.7, 0.04, 0.56, depth - 0.08], z: top, h: 24, c: WRAP });
   for (const du of uprights) {
-    boxes.push({ at: [u0 + du, v0, 0.05, 0.05], h: height, c: BLUE });
-    boxes.push({ at: [u0 + du, v0 + D - 0.05, 0.05, 0.05], h: height, c: BLUE });
+    boxes.push({ at: [du, 0, 0.05, 0.05], h: height, c: BLUE });
+    boxes.push({ at: [du, depth - 0.05, 0.05, 0.05], h: height, c: BLUE });
   }
-  return boxes;
+  return boxes.map(({ at: [u, v, w, d], ...rest }): BoxSpec => ({
+    ...rest,
+    at: alongV ? [u0 + v, v0 + u, d, w] : [u0 + u, v0 + v, w, d],
+  }));
 }
 
 const ROW_DEFAULTS = {
@@ -133,17 +140,33 @@ export function objectBoxes(object: SceneObject): BoxSpec[] {
   }
 }
 
-// A truck: a 2.4 × 1.0 trailer along u, the cab on its -u end, an optional brand panel on +v.
-function truckBoxes({ trailer: [u, v], cab, brand }: Truck): BoxSpec[] {
+// A box seen from a side of the hall: built for the -u side (away from the hall towards -u,
+// along v), turned or mirrored for the others.
+function onSide([u, v, W, D]: BoxSpec["at"], side: HallSide): BoxSpec["at"] {
+  if (side === "+u") return [-(u + W), v, W, D];
+  if (side === "-v") return [v, u, D, W];
+  if (side === "+v") return [v, -(u + W), D, W];
+  return [u, v, W, D];
+}
+
+// A truck: a 2.4 × 1.0 trailer backed up to the hall, the cab at its far end, an optional
+// brand panel on its +v side (the side facing the camera on the -u side).
+function truckBoxes({ trailer, cab, brand, side }: Truck): BoxSpec[] {
   const cabColor = cab === "orange" ? ORANGE : BLUE;
-  return [
-    { at: [u + 0.15, v + 0.05, 0.25, 0.9], h: 10, c: DARK },
-    { at: [u, v, 2.4, 1.0], z: 10, h: 62, c: WHITE },
-    { at: [u - 0.6, v + 0.05, 0.6, 0.9], z: 6, h: 46, c: cabColor },
-    { at: [u - 0.58, v + 0.07, 0.56, 0.86], z: 52, h: 6, c: DARK },
-    { at: [u + 1.7, v + 0.05, 0.25, 0.9], h: 10, c: DARK },
-    ...(brand === false ? [] : [{ at: [u + 0.45, v + 1.0, 1.5, 0.006], z: 30, h: 30, c: BRAND } as BoxSpec]),
+  // Around the middle of the trailer's back end.
+  const boxes: BoxSpec[] = [
+    { at: [-2.25, -0.45, 0.25, 0.9], h: 10, c: DARK },
+    { at: [-2.4, -0.5, 2.4, 1.0], z: 10, h: 62, c: WHITE },
+    { at: [-3.0, -0.45, 0.6, 0.9], z: 6, h: 46, c: cabColor },
+    { at: [-2.98, -0.43, 0.56, 0.86], z: 52, h: 6, c: DARK },
+    { at: [-0.7, -0.45, 0.25, 0.9], h: 10, c: DARK },
+    ...(brand === false ? [] : [{ at: [-1.95, 0.5, 1.5, 0.006], z: 30, h: 30, c: BRAND } as BoxSpec]),
   ];
+  const [bu, bv] = side ? trailer : [trailer[0] + 2.4, trailer[1] + 0.5];
+  return boxes.map(({ at, ...rest }) => {
+    const [u, v, W, D] = onSide(at, side ?? "-u");
+    return { ...rest, at: [bu + u, bv + v, W, D] };
+  });
 }
 
 // A low cutaway wall in the plane u = fix or v = fix, outside the hall's edge. Open docks are
@@ -185,18 +208,21 @@ export function wallBoxes(axis: "u" | "v", fix: number, length: number, height: 
   return boxes;
 }
 
-// Everything that stands still, as one list of boxes.
-export function staticBoxes(layout: FactoryLayout): BoxSpec[] {
-  const { exterior, hall } = layout;
+// The hall's low walls, with the docks in them.
+export function hallWallBoxes({ hall, docks }: FactoryLayout): BoxSpec[] {
+  const docksOn = (wall: string) => docks.filter((dock) => dock.wall === wall);
+  return [
+    ...wallBoxes("u", 0, hall.rows, hall.wallHeight, docksOn("u=0"), -1),
+    ...wallBoxes("v", 0, hall.cols, hall.wallHeight, docksOn("v=0"), -1),
+    ...wallBoxes("u", hall.cols, hall.rows, hall.wallHeight, docksOn(`u=${hall.cols}`), 1),
+    ...wallBoxes("v", hall.rows, hall.cols, hall.wallHeight, docksOn(`v=${hall.rows}`), 1),
+  ];
+}
+
+// Everything that stands still outside the hall: trucks, hedges, cars, the charging area
+// and the guard house.
+export function siteBoxes({ exterior }: FactoryLayout): BoxSpec[] {
   const boxes: BoxSpec[] = [];
-  const docksOn = (wall: string) => layout.docks.filter((dock) => dock.wall === wall);
-
-  boxes.push(...wallBoxes("u", 0, hall.rows, hall.wallHeight, docksOn("u=0"), -1));
-  boxes.push(...wallBoxes("v", 0, hall.cols, hall.wallHeight, docksOn("v=0"), -1));
-  boxes.push(...wallBoxes("u", hall.cols, hall.rows, hall.wallHeight, docksOn(`u=${hall.cols}`), 1));
-  boxes.push(...wallBoxes("v", hall.rows, hall.cols, hall.wallHeight, docksOn(`v=${hall.rows}`), 1));
-
-  layout.objects.forEach((object) => boxes.push(...objectBoxes(object)));
   exterior.trucks.forEach((truck) => boxes.push(...truckBoxes(truck)));
   exterior.hedges.forEach((at) => boxes.push({ at, h: 10, c: HEDGE }));
 
@@ -225,15 +251,15 @@ export function staticBoxes(layout: FactoryLayout): BoxSpec[] {
   return boxes;
 }
 
-function zoneOf(col: number, row: number, { laneRow, laneCol }: FactoryLayout["zones"]): ZoneName {
-  if (row === laneRow || col === laneCol) return "lane";
-  if (col < laneCol) return row < laneRow ? "outbound" : "inbound";
-  return row < laneRow ? "production" : "warehouse";
+// Everything that stands still, as one list of boxes.
+export function staticBoxes(layout: FactoryLayout): BoxSpec[] {
+  return [...hallWallBoxes(layout), ...layout.objects.flatMap(objectBoxes), ...siteBoxes(layout)];
 }
 
-// The ground, bottom layer first: grass, site paving, roads, yards, car park, charging area,
-// hall slab, floor cells and lane lines.
-export function groundQuads({ exterior, hall, zones }: FactoryLayout): Quad[] {
+
+// The ground around the hall, bottom layer first: grass, site paving, roads, yards, car
+// park and charging area.
+export function siteQuads({ exterior }: FactoryLayout): Quad[] {
   const quads: Quad[] = [];
   const e = exterior.groundExtent;
   quads.push(rectQuad([-e, -e, e, e], exterior.groundColor, 0));
@@ -245,10 +271,14 @@ export function groundQuads({ exterior, hall, zones }: FactoryLayout): Quad[] {
     const [from, to]: [UV, UV] = u1 - u0 < v1 - v0 ? [[(u0 + u1) / 2, v0], [(u0 + u1) / 2, v1]] : [[u0, (v0 + v1) / 2], [u1, (v0 + v1) / 2]];
     quads.push(...lineQuads(from, to, "#FFFFFF", 3 * PX, 3, [16 * PX, 14 * PX]));
   }
-  for (const { rect } of exterior.truckYards) {
+  for (const { rect, stripes = "u" } of exterior.truckYards) {
     const [u0, v0, u1, v1] = rect;
     quads.push(rectQuad(rect, exterior.yardColor, 4));
-    for (let v = v0 + 0.2; v <= v1 - 0.2; v += 1.25) quads.push(...lineQuads([u0 + 0.4, v], [u1 - 0.3, v], "#F2B53A", 2.5 * PX, 5));
+    if (stripes === "u") {
+      for (let v = v0 + 0.2; v <= v1 - 0.2; v += 1.25) quads.push(...lineQuads([u0 + 0.4, v], [u1 - 0.3, v], "#F2B53A", 2.5 * PX, 5));
+    } else {
+      for (let u = u0 + 0.2; u <= u1 - 0.2; u += 1.25) quads.push(...lineQuads([u, v0 + 0.4], [u, v1 - 0.3], "#F2B53A", 2.5 * PX, 5));
+    }
   }
   const park = exterior.carPark;
   quads.push(rectQuad(park.rect, exterior.yardColor, 4));
@@ -264,16 +294,27 @@ export function groundQuads({ exterior, hall, zones }: FactoryLayout): Quad[] {
     const corners: UV[] = [[u0, v0], [u1, v0], [u1, v1], [u0, v1], [u0, v0]];
     corners.slice(1).forEach((to, i) => quads.push(...lineQuads(corners[i], to, "#F2B53A", 2 * PX, 5)));
   }
+  return quads;
+}
+
+// The hall's floor: slab, floor cells and lane lines.
+export function hallQuads({ hall, zones }: FactoryLayout): Quad[] {
+  const quads: Quad[] = [];
   quads.push(rectQuad([-0.08, -0.08, hall.cols + 0.08, hall.rows + 0.08], hall.slabColor, 6));
   quads.push(rectQuad([0, 0, hall.cols, hall.rows], "#FFFFFF", 7));
   const inset = PX;
   for (let row = 0; row < hall.rows; row++) {
     for (let col = 0; col < hall.cols; col++) {
       const cell: Rect = [col + inset, row + inset, col + 1 - inset, row + 1 - inset];
-      quads.push(rectQuad(cell, zones.colors[zoneOf(col, row, zones)], 8));
+      quads.push(rectQuad(cell, zones.colors[zoneAt(col, row, zones)], 8));
     }
   }
   hall.markings.dashed.forEach(([from, to]) => quads.push(...lineQuads(from, to, "#FFFFFF", 3 * PX, 9, [12 * PX, 9 * PX])));
   hall.markings.solid.forEach(([from, to]) => quads.push(...lineQuads(from, to, "#F2B53A", 2 * PX, 9)));
   return quads;
+}
+
+// The whole ground, bottom layer first.
+export function groundQuads(layout: FactoryLayout): Quad[] {
+  return [...siteQuads(layout), ...hallQuads(layout)];
 }
