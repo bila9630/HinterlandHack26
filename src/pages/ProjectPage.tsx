@@ -90,7 +90,13 @@ export default function ProjectPage() {
   }
 
   if (step === 4) {
-    const live = chosen && { layout: chosen, workstations, processes: Object.values(processes), staffing };
+    const live = chosen && {
+      layout: chosen,
+      workstations,
+      processes: Object.values(processes),
+      staffing,
+      onContinue: () => setStep(5),
+    };
     return <ReviewPage live={live} />;
   }
 

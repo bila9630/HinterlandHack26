@@ -16,12 +16,13 @@ export type LiveSimulationProps = {
   workstations: PlacedWorkstation[];
   processes: ProcessStep[][];
   staffing: Staffing;
+  onContinue?: () => void;
 };
 
 // One shift on the floor, drawn as the factory scene: the hall and its site, the crews at
 // work and the forklifts on their rounds. Clicking a person or vehicle opens its card, and
 // the AI suggestions point at whoever they are about.
-export default function LiveSimulation({ layout, workstations, processes, staffing }: LiveSimulationProps) {
+export default function LiveSimulation({ layout, workstations, processes, staffing, onContinue }: LiveSimulationProps) {
   const plan = useMemo(
     () => livePlan(layout, workstations, processes, staffing),
     [layout, workstations, processes, staffing],
@@ -68,6 +69,15 @@ export default function LiveSimulation({ layout, workstations, processes, staffi
         <div className="absolute top-4 right-4">
           {vehicle ? <VehicleCard {...card} vehicle={vehicle} /> : person && <PersonCard {...card} person={person} />}
         </div>
+      )}
+      {onContinue && (
+        <button
+          type="button"
+          onClick={onContinue}
+          className="absolute right-4 bottom-4 cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-[12px] font-semibold text-white shadow-lg transition hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 focus:outline-none"
+        >
+          Continue to offer →
+        </button>
       )}
     </main>
   );
