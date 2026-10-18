@@ -1,9 +1,15 @@
-import { FactoryLayout, Rect, zoneAt } from "../layout";
+import { FactoryLayout, Rect, ZoneName } from "../layout";
 import { pts } from "../iso";
 import { FloorLine, FloorRect, useIso } from "./common";
 
 const ROAD_LINE = "#FFFFFF";
 const YARD_STRIPE = "#F2B53A";
+
+function zoneOf(col: number, row: number, { laneRow, laneCol }: FactoryLayout["zones"]): ZoneName {
+  if (row === laneRow || col === laneCol) return "lane";
+  if (col < laneCol) return row < laneRow ? "outbound" : "inbound";
+  return row < laneRow ? "production" : "warehouse";
+}
 
 // A road with a dashed centre line along its long side.
 function Road({ rect: [u0, v0, u1, v1], centerLine = true, color }: { rect: Rect; centerLine?: boolean; color: string }) {
@@ -80,7 +86,7 @@ export default function Floor({ layout }: { layout: FactoryLayout }) {
         <polygon
           key={`${col}-${row}`}
           points={pts([iso(col, row), iso(col + 1, row), iso(col + 1, row + 1), iso(col, row + 1)])}
-          fill={zones.colors[zoneAt(col, row, zones)]}
+          fill={zones.colors[zoneOf(col, row, zones)]}
           stroke="#FFFFFF"
           strokeWidth={2}
         />
