@@ -1,5 +1,6 @@
-import { ReactNode, RefObject, useEffect, useMemo, useRef } from "react";
+import { ReactNode, RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, ThreeEvent, useThree } from "@react-three/fiber";
+import { OrthographicCamera } from "three";
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import {
   FacilityLayout,
@@ -12,14 +13,19 @@ import {
   layoutTiles,
   layoutZones,
 } from "./layouts";
-import WorkstationModel, { DockDoor } from "./WorkstationModel";
+import { FactoryLayout, factoryLayout } from "./review/factory/layout";
+import { Boxes, Ground, Trees } from "./review/factory/three/parts";
+import { hallWallBoxes, objectBoxes, siteBoxes, siteQuads } from "./review/factory/three/models";
+import { siteLayout } from "./site";
+import WorkstationModel from "./WorkstationModel";
 import { PlacedWorkstation, Placement, WorkstationType, footprint, workstationType } from "./workstations";
 
 // One world unit is one floor square (10 m).
 const SLAB = 0.25;
 const SLAB_COLORS = { right: "#b3c0de", left: "#c5cfe7" };
 const GRID_COLOR = "#ffffff";
-const DOCK_COLORS = { inbound: "#2c4fd6", outbound: "#d9822b" };
+// The site's ground lies just below the hall's floor.
+const SITE_DEPTH = 0.02;
 
 type Point = [number, number, number];
 export type Labels = RefObject<HTMLDivElement | null>;
@@ -36,19 +42,39 @@ export type SceneDraft = {
 };
 
 // Scales the orthographic camera so the whole floor fits the canvas.
-function FitCamera({ columns, rows }: { columns: number; rows: number }) {
-  const camera = useThree((state) => state.camera);
+// Panels covering the canvas's edges are left out, the floor centred in what remains.
+function FitCamera({ columns, rows, covered }: { columns: number; rows: number; covered: Covered }) {
+  const camera = useThree((state) => state.camera) as OrthographicCamera;
   const width = useThree((state) => state.size.width);
   const height = useThree((state) => state.size.height);
+  const { left = 0, right = 0 } = covered;
 
   useEffect(() => {
     const projectedWidth = (columns + rows) * Math.cos(Math.PI / 6);
     const projectedHeight = (columns + rows) / 2 + SLAB;
-    camera.zoom = Math.min((width * 0.88) / projectedWidth, (height * 0.88) / projectedHeight);
+    camera.zoom = Math.min(((width - left - right) * 0.88) / projectedWidth, (height * 0.88) / projectedHeight);
+    // Shifts the picture right by half the difference, so the floor sits in the middle of the open part.
+    camera.setViewOffset(width, height, (right - left) / 2, 0, width, height);
     camera.updateProjectionMatrix();
-  }, [camera, width, height, columns, rows]);
+  }, [camera, width, height, columns, rows, left, right]);
 
   return null;
+}
+
+// Pixels along the canvas's left and right edges that panels cover.
+type Covered = { left?: number; right?: number };
+
+// Whether the screen is wide enough (Tailwind's lg) for the panels to float over the floor.
+function useWide() {
+  const query = "(min-width: 1024px)";
+  const [wide, setWide] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const update = () => setWide(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return wide;
 }
 
 // Centre lines of every straight run of two or more lane squares.
@@ -91,6 +117,28 @@ function zoneOutline(tiles: Tiles, kinds: ZoneKind[]) {
     if (!matches(x + 1, z)) points.push([x + 1, y, z], [x + 1, y, z + 1]);
   }
   return points;
+}
+
+// The hall's walls with the dock doors in them, as the factory scene draws them, and
+// optionally the site around the hall: yards, trucks, roads, car park and trees.
+function HallSurroundings({ site, scenery }: { site: FactoryLayout; scenery: boolean }) {
+  const walls = useMemo(() => hallWallBoxes(site), [site]);
+  const ground = useMemo(() => siteQuads(site), [site]);
+  const boxes = useMemo(() => [...site.objects.flatMap(objectBoxes), ...siteBoxes(site)], [site]);
+  return (
+    <>
+      <Boxes boxes={walls} />
+      {scenery && (
+        <>
+          <group position-y={-SITE_DEPTH}>
+            <Ground quads={ground} />
+          </group>
+          <Boxes boxes={boxes} />
+          <Trees layout={site} />
+        </>
+      )}
+    </>
+  );
 }
 
 // Places a model built in metres at a footprint centre given in metres; the model turns itself.
@@ -158,6 +206,8 @@ type FloorProps = {
   overlay?: (labels: Labels) => ReactNode;
   // Hides the zone and dock labels, for small previews.
   quiet?: boolean;
+  // Draws the site around the hall.
+  scenery?: boolean;
 };
 
 function Floor({
@@ -170,12 +220,14 @@ function Floor({
   onSelectWorkstation,
   overlay,
   quiet = false,
+  scenery = true,
 }: FloorProps) {
   const columns = layout.grid[0].length;
   const rows = layout.grid.length;
   const tiles = useMemo(() => layoutTiles(layout), [layout]);
   const lanes = useMemo(() => laneLines(layout.grid), [layout]);
   const docks = useMemo(() => layoutDocks(layout), [layout]);
+  const site = useMemo(() => siteLayout(layout), [layout]);
   const draftType = draft?.type;
   const highlight = useMemo(() => (draftType ? zoneOutline(tiles, draftType.fits) : []), [tiles, draftType]);
   const gridLines = useMemo(() => {
@@ -225,6 +277,7 @@ function Floor({
           gapSize={0.06}
         />
       )}
+      <HallSurroundings site={site} scenery={scenery} />
       {workstations
         .filter((item) => item.id !== draft?.editingId)
         .map((item) => (
@@ -243,11 +296,6 @@ function Floor({
         ))}
       {docks.map((dock) => (
         <group key={dock.kind}>
-          {dock.doors.map((door, index) => (
-            <OnFloor key={index} placement={door}>
-              <DockDoor color={DOCK_COLORS[dock.kind]} rotated={door.rotated} />
-            </OnFloor>
-          ))}
           {!showLabels && !quiet && (
             <Html
               portal={labels as RefObject<HTMLElement>}
@@ -290,22 +338,29 @@ function Floor({
 }
 
 type Props = Omit<FloorProps, "labels" | "showLabels" | "workstations" | "draft"> & {
+  // Panels floating over the canvas's edges on wide screens, in pixels.
+  covered?: Covered;
   showLabels?: boolean;
   workstations?: PlacedWorkstation[];
   draft?: SceneDraft | null;
 };
 
-export default function LayoutScene({ showLabels = true, workstations = [], draft = null, ...floor }: Props) {
-  const { layout } = floor;
+export default function LayoutScene({ covered = {}, showLabels = true, workstations = [], draft = null, ...floor }: Props) {
+  const { layout, scenery = true } = floor;
+  const wide = useWide();
   // A fixed label container: drei's default target can change after the first labels
   // mount, which leaves the first one empty.
   const labels = useRef<HTMLDivElement>(null);
 
   return (
     // select-none: dragging across the floor would otherwise select the label text.
-    <div className="relative h-full w-full select-none">
-      <Canvas orthographic flat camera={{ position: [20, 20, 20], near: 0.1, far: 200 }}>
-        <FitCamera columns={layout.grid[0].length} rows={layout.grid.length} />
+    <div
+      className="relative h-full w-full select-none"
+      style={scenery ? { background: factoryLayout.exterior.groundColor } : undefined}
+    >
+      {/* Far enough back that the site's ground, which reaches well past the hall, stays in front of the camera. */}
+      <Canvas orthographic flat camera={{ position: [60, 60, 60], near: 0.1, far: 400 }}>
+        <FitCamera columns={layout.grid[0].length} rows={layout.grid.length} covered={wide ? covered : {}} />
         <Floor {...floor} labels={labels} showLabels={showLabels} workstations={workstations} draft={draft} />
         {/* Tilt between top-down and a little past isometric (~55°), so the squares never flatten out.
             Rotating is off while placing, so dragging moves the workstation instead. */}
