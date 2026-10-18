@@ -7,7 +7,7 @@ import { PRIMARY, PRIMARY_DARK, WARNING } from "../colors";
 import { Conveyor, FactoryLayout, Person, Station, UV, Vehicle, bobSeconds } from "../layout";
 import { pythonRandom } from "../random";
 import { SelectionContext } from "../selection";
-import { BoxSpec, LAYER, Quad, boxGeometry, quadGeometry, worldScale } from "./geometry";
+import { BoxSpec, LAYER, boxGeometry, quadGeometry, worldScale } from "./geometry";
 import { CONVEYOR_ITEM, forkliftBoxes, groundQuads, jackBoxes, staticBoxes } from "./models";
 import { routePose, along } from "./motion";
 
@@ -33,7 +33,7 @@ function useZoomScale(node: RefObject<HTMLElement | null>, base: number, transfo
 }
 
 // A merged box model as one mesh; the geometry is freed when it is no longer drawn.
-export function Boxes({ boxes, visible = true, meshRef }: { boxes: BoxSpec[]; visible?: boolean; meshRef?: RefObject<Mesh | null> }) {
+function Boxes({ boxes, visible = true, meshRef }: { boxes: BoxSpec[]; visible?: boolean; meshRef?: RefObject<Mesh | null> }) {
   const scale = useContext(ScaleContext);
   const geometry = useMemo(() => boxGeometry(boxes, scale.z), [boxes, scale]);
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -54,24 +54,16 @@ function Shadow({ rx, rz = rx, opacity = 0.18, at = [0, 0] }: { rx: number; rz?:
   );
 }
 
-// Flat quads on the ground as one mesh.
-export function Ground({ quads }: { quads: Quad[] }) {
-  const ground = useMemo(() => quadGeometry(quads), [quads]);
-  useEffect(() => () => ground.dispose(), [ground]);
-  return (
-    <mesh geometry={ground} raycast={noRaycast}>
-      <meshBasicMaterial vertexColors side={DoubleSide} />
-    </mesh>
-  );
-}
-
 // The ground, and everything that stands still, each in one draw call.
 export function StaticScene({ layout }: { layout: FactoryLayout }) {
-  const quads = useMemo(() => groundQuads(layout), [layout]);
+  const ground = useMemo(() => quadGeometry(groundQuads(layout)), [layout]);
   const boxes = useMemo(() => staticBoxes(layout), [layout]);
+  useEffect(() => () => ground.dispose(), [ground]);
   return (
     <>
-      <Ground quads={quads} />
+      <mesh geometry={ground} raycast={noRaycast}>
+        <meshBasicMaterial vertexColors side={DoubleSide} />
+      </mesh>
       <Boxes boxes={boxes} />
     </>
   );

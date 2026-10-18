@@ -65,18 +65,7 @@ export type Vehicle = {
   sortAt?: UV;
   showRoute?: boolean;
 };
-// The side of the hall something outside it stands on.
-export type HallSide = "-u" | "+u" | "-v" | "+v";
-// A truck backed up to the hall. Without `side` it stands on the -u side, `trailer` being the
-// trailer's [u0, v0] corner; with it, `trailer` is the middle of the trailer's back end.
-export type Truck = {
-  trailer: UV;
-  cab: "blue" | "orange";
-  side?: HallSide;
-  docked?: string;
-  waiting?: boolean;
-  brand?: boolean;
-};
+export type Truck = { trailer: UV; cab: "blue" | "orange"; docked?: string; waiting?: boolean; brand?: boolean };
 
 export type FactoryLayout = {
   camera: {
@@ -96,9 +85,7 @@ export type FactoryLayout = {
     slabColor: string;
     markings: { dashed: [UV, UV][]; solid: [UV, UV][] };
   };
-  // Zones by the rule (lane on laneRow and laneCol), or square by square from `grid`: one
-  // string per row, one character per column (I, W, P, O or L).
-  zones: { laneRow?: number; laneCol?: number; grid?: string[]; colors: Record<ZoneName, string> };
+  zones: { laneRow: number; laneCol: number; colors: Record<ZoneName, string> };
   docks: Dock[];
   stations: Station[];
   objects: SceneObject[];
@@ -111,8 +98,7 @@ export type FactoryLayout = {
     roadColor: string;
     yardColor: string;
     roads: { rect: Rect; centerLine?: boolean }[];
-    // Parking lines run along u, or along v.
-    truckYards: { rect: Rect; stripes?: "u" | "v" }[];
+    truckYards: { rect: Rect }[];
     carPark: { rect: Rect; stalls: number; stallWidth: number; cars: number[] };
     chargingArea: {
       rect: Rect;
@@ -136,16 +122,6 @@ export type FactoryLayout = {
 };
 
 export const factoryLayout = data as unknown as FactoryLayout;
-
-const ZONE_BY_CHAR: Record<string, ZoneName> = { I: "inbound", W: "warehouse", P: "production", O: "outbound", L: "lane" };
-
-// The zone of a floor cell.
-export function zoneAt(col: number, row: number, { laneRow = -1, laneCol = -1, grid }: FactoryLayout["zones"]): ZoneName {
-  if (grid) return ZONE_BY_CHAR[grid[row][col]];
-  if (row === laneRow || col === laneCol) return "lane";
-  if (col < laneCol) return row < laneRow ? "outbound" : "inbound";
-  return row < laneRow ? "production" : "warehouse";
-}
 
 // "bob 1.7s" -> 1.7
 export function bobSeconds(anim?: string) {

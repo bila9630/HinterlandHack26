@@ -1,5 +1,3 @@
-import { FactoryLayout, SceneObject, factoryLayout } from "./review/factory/layout";
-
 export type ZoneKind = "inbound" | "warehouse" | "production" | "outbound" | "lane";
 
 // Edge length of one floor square, in metres.
@@ -15,18 +13,6 @@ export type FacilityLayout = {
   grid: string[];
   // Main goods flow, as [x, z] points in metres.
   flow: [number, number][];
-  // The site around the hall; without one, one is laid out around the docks.
-  site?: SiteScenery;
-};
-
-// The yard, roads and scenery around the hall (in floor squares from the hall's corner, as
-// the factory scene has them), and what stands in the yard.
-export type SiteScenery = { exterior: FactoryLayout["exterior"]; props: SceneObject[] };
-
-// The factory scene's own site, drawn for the hall it was designed for.
-const FACTORY_SITE: SiteScenery = {
-  exterior: factoryLayout.exterior,
-  props: factoryLayout.objects.filter((object) => "at" in object && (object.at[0] < 0 || object.at[1] < 0)),
 };
 
 export const ZONE_ORDER: ZoneKind[] = ["inbound", "warehouse", "production", "outbound", "lane"];
@@ -77,7 +63,6 @@ export const LAYOUTS: FacilityLayout[] = [
       [50, 15],
       [10, 15],
     ],
-    site: FACTORY_SITE,
   },
   {
     id: "through-flow",

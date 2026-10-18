@@ -51,7 +51,6 @@ export default function RouteMiniMap({ transportFor, onOpen3D }: Props) {
         <LayoutScene
           layout={layout}
           quiet
-          scenery={false}
           workstations={workstations}
           overlay={(labels) => (
             <ProcessRoute labels={labels} stations={stations} route={route} activeIndex={active} pallet={position} compact />

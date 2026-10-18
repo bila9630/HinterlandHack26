@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef } from "react";
 import { FacilityLayout } from "../layouts";
+import LayoutScene from "../LayoutScene";
 import { Staffing } from "../people";
 import { ProcessStep } from "../process/model";
 import { PlacedWorkstation } from "../workstations";
-import FactoryScene3D from "./factory/FactoryScene3D";
+import LiveFloor, { LiveControl } from "./LiveFloor";
 import { livePlan } from "./liveSim";
-import { reviewLayout } from "./reviewScene";
 
 export type LiveSimulationProps = {
   layout: FacilityLayout;
@@ -14,21 +14,26 @@ export type LiveSimulationProps = {
   staffing: Staffing;
 };
 
-// One shift on the floor, drawn as the factory scene: the hall and its site, the crews at
-// work and the forklifts on their rounds. People and vehicles can be clicked.
+// One shift on the floor: forklifts and crews at work.
 export default function LiveSimulation({ layout, workstations, processes, staffing }: LiveSimulationProps) {
   const plan = useMemo(
     () => livePlan(layout, workstations, processes, staffing),
     [layout, workstations, processes, staffing],
   );
-  const scene = useMemo(() => reviewLayout(layout, plan), [layout, plan]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const control = useRef<LiveControl>({ time: 0, moving: 0 });
 
   if (plan.stops.length === 0) return null;
 
   return (
-    <main className="relative h-[calc(100vh-3rem)] overflow-hidden">
-      <FactoryScene3D layout={scene} selectedId={selectedId} onSelect={setSelectedId} />
+    <main className="relative h-[60vh] bg-[#e0e7f3] lg:h-[calc(100vh-3rem)] lg:overflow-hidden">
+      <LayoutScene
+        layout={layout}
+        showLabels={false}
+        quiet
+        // The live floor draws the forklifts, on the move.
+        workstations={plan.placed.filter((item) => item.typeId !== "forklift")}
+        overlay={() => <LiveFloor plan={plan} control={control} />}
+      />
     </main>
   );
 }
