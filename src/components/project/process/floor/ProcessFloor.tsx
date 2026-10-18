@@ -38,8 +38,9 @@ export default function ProcessFloor({ onShowFlow }: { onShowFlow: () => void })
 
   return (
     <main className="relative flex flex-col bg-[#e0e7f3] lg:block lg:h-[calc(100vh-3rem)] lg:overflow-hidden">
-      <div className="relative order-2 h-[60vh] lg:absolute lg:inset-0 lg:left-[220px] lg:h-auto">
+      <div className="relative order-2 h-[60vh] lg:absolute lg:inset-0 lg:h-auto">
         <LayoutScene
+          covered={{ left: 220 }}
           layout={layout}
           showLabels={false}
           quiet
