@@ -6,7 +6,7 @@ import { PlacedWorkstation, autoPlace, isStop } from "../workstations";
 import { forkliftPaths } from "./floorPaths";
 
 // Pallets are released a little slower than the bottleneck takes them, so no queue builds up.
-const BOTTLENECK_LOAD = 0.97;
+export const BOTTLENECK_LOAD = 0.97;
 const MAX_CREW = 6;
 
 // A stop on the route: the step done there, how many people work there, and how busy it is (0–1).
@@ -53,7 +53,7 @@ export function livePlan(
     utilisation: (metrics.times[index] / slowest) * BOTTLENECK_LOAD,
   }));
 
-  return { placed, stops, forklifts: forkliftPaths(layout, placed, route) };
+  return { placed, stops, forklifts: forkliftPaths(layout, placed, route), metrics, staffing };
 }
 
 export type LivePlan = ReturnType<typeof livePlan>;
